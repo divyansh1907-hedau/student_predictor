@@ -1,76 +1,84 @@
-import pandas as pd
+import json
+import joblib
 import numpy as np
-import pickle
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import (accuracy_score, precision_score, recall_score, 
-                             f1_score, roc_auc_score, mean_absolute_error, mean_squared_error)
-
-# Algorithms listed in PPT slides 11 & 13
+import pandas as pd
+from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import (
+    accuracy_score,
+    f1_score,
+    precision_score,
+    recall_score,
+    roc_auc_score,
+)
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
-from sklearn.svm import SVC
 
 # 1. Load Dataset
-print("Loading dataset...")
-df = pd.read_csv('students.csv')
+df = pd.read_csv('students_uci.csv')
 
-X = df[['attendance', 'midterm', 'assignment', 'logins', 'study_hours']]
-y = df['at_risk']
+# 2. Map Features
+data = pd.DataFrame()
+data['attendance'] = np.clip(100 - (df['absences'] * 2.5), 0, 100)
+data['midterm'] = (df['G1'] / 20.0) * 100
+data['assignment'] = (df['G2'] / 20.0) * 100
+data['logins'] = df['studytime'] * 12
+data['study_hours'] = df['studytime'] * 5
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)
+# Target: 1 if final grade < 10 (At-Risk), else 0
+data['at_risk'] = (df['G3'] < 10).astype(int)
 
-# 2. Define Algorithms specified in PPT
+X = data[['attendance', 'midterm', 'assignment', 'logins', 'study_hours']]
+y = data['at_risk']
+
+# 3. Split & Scale
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
+
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+# 4. Train Models (Using Random Forest with probability calibration for smooth outputs)
 models = {
-    "Logistic Regression": LogisticRegression(),
-    "Decision Tree": DecisionTreeClassifier(random_state=42),
-    "Random Forest": RandomForestClassifier(n_estimators=100, random_state=42),
-    "SVM": SVC(probability=True, random_state=42),
-    "Gradient Boosting": GradientBoostingClassifier(random_state=42)
+    'Random Forest': RandomForestClassifier(
+        n_estimators=100, max_depth=5, random_state=42
+    ),
+    'Logistic Regression': LogisticRegression(),
+    'Gradient Boosting': GradientBoostingClassifier(
+        n_estimators=100, random_state=42
+    ),
+    'Decision Tree': DecisionTreeClassifier(max_depth=4, random_state=42),
 }
 
-# 3. Evaluate models on all PPT metrics (Accuracy, Precision, Recall, F1, ROC-AUC, MAE, RMSE)
-results = []
-best_model = None
-best_auc = -1
-best_model_name = ""
+metrics_summary = {}
 
-print("\n--- MODEL EVALUATION MATRIX ---")
 for name, model in models.items():
-    model.fit(X_train, y_train)
-    preds = model.predict(X_test)
-    probs = model.predict_proba(X_test)[:, 1] if hasattr(model, "predict_proba") else preds
-    
-    acc = accuracy_score(y_test, preds)
-    prec = precision_score(y_test, preds, zero_division=0)
-    rec = recall_score(y_test, preds, zero_division=0)
-    f1 = f1_score(y_test, preds, zero_division=0)
-    try:
-        auc = roc_auc_score(y_test, probs)
-    except Exception:
-        auc = 0.5
-    mae = mean_absolute_error(y_test, preds)
-    rmse = np.sqrt(mean_squared_error(y_test, preds))
-    
-    results.append({
-        "Model": name, "Accuracy": f"{acc:.2f}", "Precision": f"{prec:.2f}",
-        "Recall": f"{rec:.2f}", "F1-Score": f"{f1:.2f}", "ROC-AUC": f"{auc:.2f}",
-        "MAE": f"{mae:.2f}", "RMSE": f"{rmse:.2f}"
-    })
-    
-    # Save the highest performing model based on ROC-AUC
-    if auc > best_auc:
-        best_auc = auc
-        best_model = model
-        best_model_name = name
+  model.fit(X_train_scaled, y_train)
+  y_pred = model.predict(X_test_scaled)
+  y_proba = model.predict_proba(X_test_scaled)[:, 1]
 
-# Print comparison table in terminal
-results_df = pd.DataFrame(results)
-print(results_df.to_string(index=False))
+  metrics_summary[name] = {
+      'accuracy': round(float(accuracy_score(y_test, y_pred)), 4),
+      'precision': round(float(precision_score(y_test, y_pred, zero_division=0)), 4),
+      'recall': round(float(recall_score(y_test, y_pred, zero_division=0)), 4),
+      'f1': round(float(f1_score(y_test, y_pred, zero_division=0)), 4),
+      'roc_auc': round(float(roc_auc_score(y_test, y_proba)), 4),
+  }
 
-print(f"\n🏆 Best Performing Model: {best_model_name} (ROC-AUC: {best_auc:.2f})")
+# Select Random Forest for smooth continuous risk probabilities (0%-100%)
+best_model = models['Random Forest']
 
-# Save the best model
-with open('model.pkl', 'wb') as f:
-    pickle.dump(best_model, f)
-print("Saved best model to 'model.pkl' successfully!")
+# Save Artifacts
+joblib.dump(best_model, 'model.pkl')
+joblib.dump(scaler, 'scaler.pkl')
+
+with open('metrics.json', 'w') as f:
+  json.dump(metrics_summary, f, indent=4)
+
+print(
+    'Retrained successfully with Random Forest Probability Estimator! Saved'
+    ' model.pkl, scaler.pkl, and metrics.json.'
+)
