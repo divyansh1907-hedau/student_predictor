@@ -3,8 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EduPredict AI - Student Risk Analytics</title>
+    <title>EduPredict AI - Student Risk Analytics & Model Benchmarks</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js for Model Comparison Visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="bg-gray-900 text-gray-100 min-h-screen font-sans flex flex-col justify-between">
 
@@ -13,120 +15,166 @@
         <div class="max-w-6xl mx-auto flex justify-between items-center">
             <h1 class="text-2xl font-bold tracking-tight text-indigo-400">🎓 EduPredict AI</h1>
             <span class="text-sm bg-indigo-950 text-indigo-300 px-3 py-1 rounded-full border border-indigo-700">
-                UCI Benchmark Model • Decision Tree / ML Pipeline
+                UCI Benchmark Data • Multi-Model Analytics Engine
             </span>
         </div>
     </header>
 
-    <!-- Main Content -->
-    <main class="max-w-6xl mx-auto p-6 w-full grid grid-cols-1 md:grid-cols-2 gap-8 my-auto">
+    <!-- Main Content Grid -->
+    <main class="max-w-6xl mx-auto p-6 w-full space-y-8">
         
-        <!-- Form Section -->
-        <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-xl">
-            <h2 class="text-xl font-semibold mb-4 text-gray-200">📊 Enter Student Data</h2>
+        <!-- SECTION 1: PREDICTION INTERFACE -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
             
-            <form action="/predict" method="POST" class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-400 mb-1">Attendance Percentage (%)</label>
-                    <input type="number" step="0.1" min="0" max="100" name="attendance" required 
-                           class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="e.g. 65">
-                </div>
-
-                <div class="grid grid-cols-2 gap-4">
+            <!-- Input Form -->
+            <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-xl">
+                <h2 class="text-xl font-semibold mb-4 text-gray-200">📊 Enter Student Data</h2>
+                
+                <form action="/predict" method="POST" class="space-y-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-400 mb-1">Midterm Score (%)</label>
-                        <input type="number" step="0.1" min="0" max="100" name="midterm" required 
-                               class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="e.g. 45">
+                        <label class="block text-sm font-medium text-gray-400 mb-1">Attendance Percentage (%)</label>
+                        <input type="number" step="0.1" min="0" max="100" name="attendance" required 
+                               class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="e.g. 65">
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-400 mb-1">Assignment Score (%)</label>
-                        <input type="number" step="0.1" min="0" max="100" name="assignment" required 
-                               class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="e.g. 50">
-                    </div>
-                </div>
 
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-400 mb-1">LMS Logins / Month</label>
-                        <input type="number" name="logins" required 
-                               class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="e.g. 12">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-400 mb-1">Weekly Study Hours</label>
-                        <input type="number" step="0.1" name="study_hours" required 
-                               class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="e.g. 4">
-                    </div>
-                </div>
-
-                <button type="submit" 
-                        class="w-full mt-4 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 rounded-lg transition duration-200 shadow-lg shadow-indigo-600/30">
-                    Assess Student Risk & Generate Path 🚀
-                </button>
-            </form>
-        </div>
-
-        <!-- Output / Results Section -->
-        <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-xl flex flex-col justify-between">
-            <div>
-                <h2 class="text-xl font-semibold mb-4 text-gray-200">🎯 Prediction & Diagnostics</h2>
-
-                {% if prediction_text %}
-                    <!-- Dynamic Status Badge -->
-                    <div class="flex items-center justify-between mb-4 p-4 rounded-lg border 
-                        {% if at_risk %} bg-red-950/50 border-red-800 text-red-200 {% else %} bg-emerald-950/50 border-emerald-800 text-emerald-200 {% endif %}">
+                    <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <span class="text-xs uppercase tracking-wider font-bold text-gray-400">Risk Assessment</span>
-                            <p class="text-xl font-bold">{{ prediction_text }}</p>
+                            <label class="block text-sm font-medium text-gray-400 mb-1">Midterm Score (%)</label>
+                            <input type="number" step="0.1" min="0" max="100" name="midterm" required 
+                                   class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="e.g. 45">
                         </div>
-                        <span class="px-3 py-1 text-sm font-semibold rounded-full 
-                            {% if at_risk %} bg-red-800 text-white {% else %} bg-emerald-700 text-white {% endif %}">
-                            {% if at_risk %} AT RISK {% else %} LOW RISK {% endif %}
-                        </span>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-400 mb-1">Assignment Score (%)</label>
+                            <input type="number" step="0.1" min="0" max="100" name="assignment" required 
+                                   class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="e.g. 50">
+                        </div>
                     </div>
 
-                    <!-- DYNAMIC RISK BAR (Fluctuates based on risk_percent) -->
-                    <div class="mb-6">
-                        <div class="flex justify-between text-sm font-medium mb-1">
-                            <span class="text-gray-400">Risk Severity Score</span>
-                            <span class="text-indigo-400 font-bold">{{ risk_percent }}%</span>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-400 mb-1">LMS Logins / Month</label>
+                            <input type="number" name="logins" required 
+                                   class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="e.g. 12">
                         </div>
-                        <div class="w-full bg-gray-900 rounded-full h-4 overflow-hidden border border-gray-700">
-                            <div class="h-4 rounded-full transition-all duration-700 ease-out 
-                                {% if risk_percent > 70 %} bg-gradient-to-r from-orange-500 to-red-600 
-                                {% elif risk_percent > 40 %} bg-gradient-to-r from-yellow-500 to-amber-500 
-                                {% else %} bg-gradient-to-r from-teal-400 to-emerald-500 {% endif %}" 
-                                style="width: {{ risk_percent }}%;">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-400 mb-1">Weekly Study Hours</label>
+                            <input type="number" step="0.1" name="study_hours" required 
+                                   class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="e.g. 4">
+                        </div>
+                    </div>
+
+                    <button type="submit" 
+                            class="w-full mt-4 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 rounded-lg transition duration-200 shadow-lg shadow-indigo-600/30">
+                        Assess Student Risk & Generate Path 🚀
+                    </button>
+                </form>
+            </div>
+
+            <!-- Output Display -->
+            <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-xl flex flex-col justify-between">
+                <div>
+                    <h2 class="text-xl font-semibold mb-4 text-gray-200">🎯 Prediction & Diagnostics</h2>
+
+                    {% if prediction_text %}
+                        <div class="flex items-center justify-between mb-4 p-4 rounded-lg border 
+                            {% if at_risk %} bg-red-950/50 border-red-800 text-red-200 {% else %} bg-emerald-950/50 border-emerald-800 text-emerald-200 {% endif %}">
+                            <div>
+                                <span class="text-xs uppercase tracking-wider font-bold text-gray-400">Risk Assessment</span>
+                                <p class="text-xl font-bold">{{ prediction_text }}</p>
+                            </div>
+                            <span class="px-3 py-1 text-sm font-semibold rounded-full 
+                                {% if at_risk %} bg-red-800 text-white {% else %} bg-emerald-700 text-white {% endif %}">
+                                {% if at_risk %} AT RISK {% else %} LOW RISK {% endif %}
+                            </span>
+                        </div>
+
+                        <!-- Dynamic Risk Bar -->
+                        <div class="mb-6">
+                            <div class="flex justify-between text-sm font-medium mb-1">
+                                <span class="text-gray-400">Risk Severity Score</span>
+                                <span class="text-indigo-400 font-bold">{{ risk_percent }}%</span>
+                            </div>
+                            <div class="w-full bg-gray-900 rounded-full h-4 overflow-hidden border border-gray-700">
+                                <div class="h-4 rounded-full transition-all duration-700 ease-out 
+                                    {% if risk_percent > 70 %} bg-gradient-to-r from-orange-500 to-red-600 
+                                    {% elif risk_percent > 40 %} bg-gradient-to-r from-yellow-500 to-amber-500 
+                                    {% else %} bg-gradient-to-r from-teal-400 to-emerald-500 {% endif %}" 
+                                    style="width: {{ risk_percent }}%;">
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Personalized Remediation Learning Path -->
-                    {% if remediation_path %}
-                        <div class="mt-4 border-t border-gray-700 pt-4">
-                            <h3 class="text-md font-semibold text-indigo-300 mb-3">⚡ Personalized Remediation Path</h3>
-                            <div class="space-y-3">
-                                {% for item in remediation_path %}
-                                    <div class="p-3 bg-gray-900 rounded-lg border border-gray-700/60 text-sm">
-                                        <div class="flex justify-between items-center mb-1">
-                                            <span class="font-semibold text-gray-200">{{ item.phase }}</span>
-                                            <span class="text-xs px-2 py-0.5 rounded bg-indigo-950 text-indigo-400 border border-indigo-800">{{ item.type }}</span>
+                        <!-- Personalized Remediation Plan -->
+                        {% if remediation_path %}
+                            <div class="mt-4 border-t border-gray-700 pt-4">
+                                <h3 class="text-md font-semibold text-indigo-300 mb-3">⚡ Personalized Remediation Path</h3>
+                                <div class="space-y-3">
+                                    {% for item in remediation_path %}
+                                        <div class="p-3 bg-gray-900 rounded-lg border border-gray-700/60 text-sm">
+                                            <div class="flex justify-between items-center mb-1">
+                                                <span class="font-semibold text-gray-200">{{ item.phase }}</span>
+                                                <span class="text-xs px-2 py-0.5 rounded bg-indigo-950 text-indigo-400 border border-indigo-800">{{ item.type }}</span>
+                                            </div>
+                                            <p class="text-gray-400 text-xs">{{ item.recommendation }}</p>
                                         </div>
-                                        <p class="text-gray-400 text-xs">{{ item.recommendation }}</p>
-                                    </div>
-                                {% endfor %}
+                                    {% endfor %}
+                                </div>
                             </div>
+                        {% endif %}
+
+                    {% else %}
+                        <div class="text-center py-16 text-gray-500">
+                            <svg class="w-16 h-16 mx-auto mb-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                            </svg>
+                            <p>Enter values on the left and click **Assess Student Risk** to evaluate risk scores and view remediation guidance.</p>
                         </div>
                     {% endif %}
+                </div>
+            </div>
+        </div>
 
-                {% else %}
-                    <!-- Placeholder State before submitting -->
-                    <div class="text-center py-16 text-gray-500">
-                        <svg class="w-16 h-16 mx-auto mb-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                        </svg>
-                        <p>Enter values on the left and click **Assess Student Risk** to test prediction outcomes and generate a personalized remediation path.</p>
+        <!-- SECTION 2: MODEL BENCHMARK ANALYTICS DASHBOARD -->
+        <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-xl space-y-6">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-gray-700 pb-4">
+                <div>
+                    <h2 class="text-xl font-bold text-gray-200">📈 Model Evaluation & Algorithm Benchmarks</h2>
+                    <p class="text-sm text-gray-400">Comparative analytics across 5 machine learning models trained on the UCI Dataset.</p>
+                </div>
+                <span class="mt-2 md:mt-0 text-xs bg-emerald-950 text-emerald-400 border border-emerald-800 px-3 py-1 rounded-full font-semibold">
+                    Production Engine: Random Forest
+                </span>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+                
+                <!-- Chart.js Canvas Container -->
+                <div class="lg:col-span-2 bg-gray-900 p-4 rounded-xl border border-gray-700/60">
+                    <h3 class="text-sm font-semibold text-indigo-300 mb-3">Model Accuracy & ROC-AUC Comparison (%)</h3>
+                    <div class="h-64">
+                        <canvas id="metricsChart"></canvas>
                     </div>
-                {% endif %}
+                </div>
+
+                <!-- Detailed Metrics Table -->
+                <div class="bg-gray-900 p-4 rounded-xl border border-gray-700/60 overflow-x-auto">
+                    <h3 class="text-sm font-semibold text-indigo-300 mb-3">Performance Matrix</h3>
+                    <table class="w-full text-left text-xs text-gray-300">
+                        <thead class="text-gray-400 uppercase bg-gray-800 border-b border-gray-700">
+                            <tr>
+                                <th class="py-2 px-2">Algorithm</th>
+                                <th class="py-2 px-2">Accuracy</th>
+                                <th class="py-2 px-2">F1</th>
+                                <th class="py-2 px-2">ROC-AUC</th>
+                            </tr>
+                        </thead>
+                        <tbody id="metricsTableBody">
+                            <tr>
+                                <td colspan="4" class="text-center py-4 text-gray-500">Loading benchmark metrics...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
 
             </div>
         </div>
@@ -134,8 +182,86 @@
     </main>
 
     <footer class="text-center py-4 text-xs text-gray-500 border-t border-gray-800">
-        EduPredict AI • Engineering Major Project Prototype
+        EduPredict AI • Major Engineering Project
     </footer>
+
+    <!-- Chart.js Async Fetch Script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            fetch('/metrics')
+                .then(response => response.json())
+                .then(data => {
+                    if (Object.keys(data).length === 0) return;
+
+                    const labels = Object.keys(data);
+                    const accuracies = labels.map(key => (data[key].accuracy * 100).toFixed(1));
+                    const rocAucs = labels.map(key => (data[key].roc_auc * 100).toFixed(1));
+
+                    // Populate Metrics Table
+                    const tableBody = document.getElementById('metricsTableBody');
+                    tableBody.innerHTML = '';
+                    labels.forEach(model => {
+                        const row = `
+                            <tr class="border-b border-gray-800 hover:bg-gray-800/50">
+                                <td class="py-2 px-2 font-medium text-white">${model}</td>
+                                <td class="py-2 px-2 text-indigo-400 font-bold">${(data[model].accuracy * 100).toFixed(1)}%</td>
+                                <td class="py-2 px-2">${data[model].f1.toFixed(3)}</td>
+                                <td class="py-2 px-2 text-teal-400 font-bold">${(data[model].roc_auc * 100).toFixed(1)}%</td>
+                            </tr>
+                        `;
+                        tableBody.innerHTML += row;
+                    });
+
+                    // Render Chart.js Bar Chart
+                    const ctx = document.getElementById('metricsChart').getContext('2d');
+                    new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [
+                                {
+                                    label: 'Accuracy (%)',
+                                    data: accuracies,
+                                    backgroundColor: 'rgba(99, 102, 241, 0.8)', // Indigo
+                                    borderColor: 'rgba(99, 102, 241, 1)',
+                                    borderWidth: 1,
+                                    borderRadius: 4
+                                },
+                                {
+                                    label: 'ROC-AUC (%)',
+                                    data: rocAucs,
+                                    backgroundColor: 'rgba(20, 184, 166, 0.8)', // Teal
+                                    borderColor: 'rgba(20, 184, 166, 1)',
+                                    borderWidth: 1,
+                                    borderRadius: 4
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: {
+                                    beginAtZero: false,
+                                    min: 70,
+                                    max: 100,
+                                    grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                                    ticks: { color: '#9ca3af' }
+                                },
+                                x: {
+                                    grid: { display: false },
+                                    ticks: { color: '#9ca3af' }
+                                }
+                            },
+                            plugins: {
+                                legend: { labels: { color: '#e5e7eb' } }
+                            }
+                        }
+                    });
+                })
+                .catch(err => console.error('Error fetching metrics:', err));
+        });
+    </script>
 
 </body>
 </html>
