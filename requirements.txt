@@ -5,4 +5,5 @@ numpy
 joblib
 reportlab
 Flask-Mail
+google-genai
 gunicorn
