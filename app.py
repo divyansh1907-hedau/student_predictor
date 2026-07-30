@@ -87,8 +87,54 @@ def load_user(user_id):
 
 
 # ==========================================
-# 3. HELPER FUNCTIONS
+# 3. HELPER & INITIALIZATION FUNCTIONS
 # ==========================================
+
+def init_db():
+    """Creates tables and seeds default demo users if database is fresh (Crucial for Render/Gunicorn)."""
+    db.create_all()
+
+    # Seed Admin User if not present
+    if not User.query.filter_by(username='admin').first():
+        admin = User(
+            username='admin',
+            email='admin@university.edu',
+            role='admin'
+        )
+        admin.set_password('admin123')
+        db.session.add(admin)
+
+    # Seed Faculty User if not present
+    if not User.query.filter_by(username='faculty').first():
+        faculty = User(
+            username='faculty',
+            email='faculty@university.edu',
+            role='faculty'
+        )
+        faculty.set_password('faculty123')
+        db.session.add(faculty)
+
+    # Seed Default Student User if not present
+    if not User.query.filter_by(username='student1').first():
+        student = User(
+            username='student1',
+            email='student1@university.edu',
+            role='student',
+            attendance=65.0,
+            midterm=45.0,
+            assignment=50.0,
+            logins=12.0,
+            study_hours=4.0
+        )
+        student.set_password('student123')
+        db.session.add(student)
+
+    db.session.commit()
+
+# Ensure database is initialized during app launch
+with app.app_context():
+    init_db()
+
 
 def generate_personalized_path(midterm, assignment, attendance, study_hours):
     """Generates dynamic remediation recommendations based on student performance metrics."""
@@ -321,7 +367,7 @@ def upload_batch():
             student_email = row.get('email', f'{student_username}@university.edu')
             student_id = row.get('id', f'STU-{idx+1000}')
 
-            # Fast in-memory dictionary lookup instead of repeated database calls
+            # Fast in-memory dictionary lookup
             if student_username in existing_users:
                 existing_student = existing_users[student_username]
                 existing_student.attendance = float(row['attendance'])
@@ -342,7 +388,7 @@ def upload_batch():
                     study_hours=float(row['study_hours'])
                 )
                 new_users_to_add.append(new_student)
-                existing_users[student_username] = new_student  # Prevent duplicates within same CSV
+                existing_users[student_username] = new_student
 
             batch_results.append({
                 'id': student_id,
@@ -586,6 +632,4 @@ def export_report():
 
 
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
     app.run(debug=True)
