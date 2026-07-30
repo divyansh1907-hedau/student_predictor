@@ -1,9 +1,11 @@
-Flask
-scikit-learn
-pandas
+flask
+flask-sqlalchemy
+flask-login
+flask-mail
 numpy
+pandas
 joblib
-reportlab
-Flask-Mail
+scikit-learn
 google-genai
+reportlab
 gunicorn
