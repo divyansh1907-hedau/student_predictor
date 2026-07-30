@@ -19,6 +19,12 @@
         </div>
     </header>
 
+    <!-- Global Toast Notification Banner -->
+    <div id="toastNotification" class="fixed top-5 right-5 z-50 hidden bg-indigo-900 border border-indigo-500 text-white px-5 py-3 rounded-xl shadow-2xl transition duration-300 flex items-center space-x-3">
+        <span class="text-xl">✉️</span>
+        <span id="toastMessage" class="text-xs font-semibold">Intervention alert sent!</span>
+    </div>
+
     <!-- Main Content Grid -->
     <main class="max-w-6xl mx-auto p-6 w-full space-y-8">
         
@@ -161,17 +167,29 @@
                 </div>
             {% endif %}
 
-            <!-- Batch Results Table -->
+            <!-- Batch Results Table & Filter Toolbar -->
             {% if batch_results %}
                 <div class="space-y-4">
-                    <div class="flex justify-between items-center text-xs text-gray-400">
-                        <span>Total Records Processed: <strong class="text-white">{{ total_students }}</strong></span>
-                        <span>Flagged At-Risk: <strong class="text-red-400">{{ at_risk_count }}</strong></span>
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gray-900/60 p-3 rounded-lg border border-gray-700/60 text-xs">
+                        <div class="flex items-center space-x-4 text-gray-400">
+                            <span>Total Processed: <strong class="text-white">{{ total_students }}</strong></span>
+                            <span>Flagged At-Risk: <strong class="text-red-400">{{ at_risk_count }}</strong></span>
+                        </div>
+
+                        <!-- Status Filter Dropdown -->
+                        <div class="flex items-center space-x-2">
+                            <label class="text-gray-400 font-medium">Filter by Status:</label>
+                            <select id="statusFilter" onchange="filterBatchTable()" class="bg-gray-800 border border-gray-700 rounded-md text-white text-xs px-3 py-1.5 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer">
+                                <option value="ALL">Show All Students</option>
+                                <option value="AT_RISK">⚠️ At-Risk Only</option>
+                                <option value="SAFE">✅ Safe Only</option>
+                            </select>
+                        </div>
                     </div>
 
-                    <div class="overflow-x-auto rounded-lg border border-gray-700">
+                    <div class="overflow-x-auto rounded-lg border border-gray-700 max-h-[500px] overflow-y-auto">
                         <table class="w-full text-left text-xs text-gray-300">
-                            <thead class="text-gray-400 uppercase bg-gray-900 border-b border-gray-700">
+                            <thead class="text-gray-400 uppercase bg-gray-900 sticky top-0 border-b border-gray-700 z-10">
                                 <tr>
                                     <th class="py-3 px-3">Student ID</th>
                                     <th class="py-3 px-3">Name</th>
@@ -180,11 +198,12 @@
                                     <th class="py-3 px-3">Assignment</th>
                                     <th class="py-3 px-3">Risk Score</th>
                                     <th class="py-3 px-3">Status</th>
+                                    <th class="py-3 px-3 text-center">Intervention Action</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-gray-800">
+                            <tbody id="batchTableBody" class="divide-y divide-gray-800">
                                 {% for s in batch_results %}
-                                    <tr class="hover:bg-gray-800/60 transition">
+                                    <tr class="student-row hover:bg-gray-800/60 transition" data-status="{% if s.at_risk %}AT_RISK{% else %}SAFE{% endif %}">
                                         <td class="py-2.5 px-3 font-mono text-gray-400">{{ s.id }}</td>
                                         <td class="py-2.5 px-3 font-medium text-white">{{ s.name }}</td>
                                         <td class="py-2.5 px-3">{{ s.attendance }}%</td>
@@ -198,6 +217,16 @@
                                                 {% if s.at_risk %} bg-red-950 text-red-300 border border-red-800 {% else %} bg-emerald-950 text-emerald-300 border border-emerald-800 {% endif %}">
                                                 {% if s.at_risk %} AT RISK {% else %} SAFE {% endif %}
                                             </span>
+                                        </td>
+                                        <td class="py-2.5 px-3 text-center">
+                                            {% if s.at_risk %}
+                                                <button onclick="sendIntervention('{{ s.id }}')" 
+                                                        class="bg-rose-900/60 hover:bg-rose-800 text-rose-200 border border-rose-700 text-[10px] font-semibold px-2.5 py-1 rounded transition duration-150">
+                                                    ✉️ Send Alert
+                                                </button>
+                                            {% else %}
+                                                <span class="text-gray-600 text-[10px]">—</span>
+                                            {% endif %}
                                         </td>
                                     </tr>
                                 {% endfor %}
@@ -255,8 +284,49 @@
         EduPredict AI • Major Engineering Project
     </footer>
 
-    <!-- Chart.js Async Fetch Script -->
+    <!-- Scripts -->
     <script>
+        function filterBatchTable() {
+            const filterValue = document.getElementById('statusFilter').value;
+            const rows = document.querySelectorAll('.student-row');
+
+            rows.forEach(row => {
+                const rowStatus = row.getAttribute('data-status');
+                if (filterValue === 'ALL' || rowStatus === filterValue) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toastNotification');
+            const toastMsg = document.getElementById('toastMessage');
+            toastMsg.innerText = msg;
+            toast.classList.remove('hidden');
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 4000);
+        }
+
+        function sendIntervention(studentId) {
+            fetch('/send_intervention', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ student_id: studentId })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    showToast(data.message);
+                } else {
+                    alert('Error sending alert: ' + data.message);
+                }
+            })
+            .catch(err => alert('Network error while dispatching alert.'));
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             fetch('/metrics')
                 .then(response => response.json())
