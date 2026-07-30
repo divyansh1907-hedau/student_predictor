@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduPredict AI - Enterprise Portal Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen flex items-center justify-center p-4 font-sans">
+    
+    <div class="bg-gray-800 border border-gray-700 rounded-2xl max-w-md w-full p-8 shadow-2xl space-y-6">
+        
+        <!-- Header -->
+        <div class="text-center space-y-2">
+            <h1 class="text-3xl font-bold text-indigo-400">🎓 EduPredict AI</h1>
+            <p class="text-xs text-gray-400 font-medium">Enterprise Academic Analytics & Intervention Platform</p>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="p-3 rounded-xl text-xs bg-indigo-950 border border-indigo-800 text-indigo-200">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Form -->
+        <form action="/login" method="POST" class="space-y-4">
+            <div>
+                <label class="block text-xs font-semibold text-gray-400 mb-1">Username</label>
+                <input type="text" name="username" required 
+                       class="w-full bg-gray-900 border border-gray-700 rounded-xl p-3 text-white text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition" 
+                       placeholder="e.g. faculty, admin, or student username">
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-gray-400 mb-1">Password</label>
+                <input type="password" name="password" required 
+                       class="w-full bg-gray-900 border border-gray-700 rounded-xl p-3 text-white text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition" 
+                       placeholder="••••••••">
+            </div>
+
+            <button type="submit" 
+                    class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl transition duration-200 shadow-lg shadow-indigo-600/30 text-sm">
+                Log In to Portal 🚀
+            </button>
+        </form>
+
+        <!-- Credentials Helper Box -->
+        <div class="border-t border-gray-700 pt-4 text-xs text-gray-400 space-y-1.5">
+            <p class="font-bold text-gray-300">Portal Credentials Guide:</p>
+            <div class="space-y-1 font-mono text-[11px]">
+                <p>• HOD/Admin: <span class="text-indigo-300">admin</span> / <span class="text-indigo-300">admin123</span></p>
+                <p>• Faculty Advisor: <span class="text-indigo-300">faculty</span> / <span class="text-indigo-300">faculty123</span></p>
+                <p>• Student Logins: Auto-generated from CSV uploads (Pass: <span class="text-indigo-300">student123</span>)</p>
+            </div>
+        </div>
+
+    </div>
+
+</body>
+</html>

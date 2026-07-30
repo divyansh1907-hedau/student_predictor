@@ -4,19 +4,31 @@ import os
 import joblib
 import numpy as np
 import pandas as pd
-from flask import Flask, jsonify, render_template, request, send_file
+
+from flask import Flask, render_template, request, jsonify, redirect, url_for, flash, send_file
+from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
+from werkzeug.security import generate_password_hash, check_password_hash
+
 from flask_mail import Mail, Message
 from google import genai
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
-from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-from reportlab.platypus import Paragraph, SimpleDocTemplate, Table, TableStyle
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'edupredict-enterprise-secret-key-2026')
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///edupredict.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # ==========================================
 # 1. CONFIGURATION & SDK INITIALIZATION
 # ==========================================
+
+db = SQLAlchemy(app)
+login_manager = LoginManager(app)
+login_manager.login_view = 'login'
 
 # Flask-Mail Configuration
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
@@ -28,13 +40,13 @@ app.config['MAIL_DEFAULT_SENDER'] = ('EduPredict AI Advisory', 'edupredict.ai@gm
 
 mail = Mail(app)
 
-# Initialize Google Gemini AI Client with your API key
-GEMINI_KEY = os.environ.get("GEMINI_API_KEY", "AQ.Ab8RN6JhyqAGQbzCelcv8xXUr93zsn6czzQcOlvoIgnQDhQhIA")
-ai_client = genai.Client(api_key=GEMINI_KEY)
+# Initialize Google Gemini AI Client safely from Environment Variables
+GEMINI_KEY = os.environ.get("GEMINI_API_KEY")
+ai_client = genai.Client(api_key=GEMINI_KEY) if GEMINI_KEY else None
 
-# Load ML artifacts
-model = joblib.load('model.pkl')
-scaler = joblib.load('scaler.pkl')
+# Load ML artifacts safely
+model = joblib.load('model.pkl') if os.path.exists('model.pkl') else None
+scaler = joblib.load('scaler.pkl') if os.path.exists('scaler.pkl') else None
 
 # Global variable to store last batch results for PDF export and email dispatch
 last_batch_results = []
@@ -46,7 +58,36 @@ if os.path.exists('metrics.json'):
 
 
 # ==========================================
-# 2. HELPER FUNCTIONS
+# 2. DATABASE MODELS (RBAC & Users)
+# ==========================================
+
+class User(UserMixin, db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password_hash = db.Column(db.String(200), nullable=False)
+    role = db.Column(db.String(20), nullable=False)  # 'admin', 'faculty', 'student'
+    
+    # Student specific metrics (managed by Faculty batch uploads)
+    attendance = db.Column(db.Float, default=75.0)
+    midterm = db.Column(db.Float, default=60.0)
+    assignment = db.Column(db.Float, default=60.0)
+    logins = db.Column(db.Float, default=12.0)
+    study_hours = db.Column(db.Float, default=5.0)
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
+
+# ==========================================
+# 3. HELPER FUNCTIONS
 # ==========================================
 
 def generate_personalized_path(midterm, assignment, attendance, study_hours):
@@ -97,22 +138,108 @@ def generate_personalized_path(midterm, assignment, attendance, study_hours):
 
 
 # ==========================================
-# 3. ROUTES & ENDPOINTS
+# 4. AUTHENTICATION & PORTAL ROUTES
 # ==========================================
 
 @app.route('/')
 def home():
-    return render_template('index.html')
+    """Root route: Forces unauthenticated users to login, or redirects to their role dashboard."""
+    if not current_user.is_authenticated:
+        return redirect(url_for('login'))
 
+    if current_user.role == 'admin':
+        return redirect(url_for('admin_dashboard'))
+    elif current_user.role == 'student':
+        return redirect(url_for('student_dashboard'))
+    else:
+        return render_template('index.html', user=current_user)
+
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        user = User.query.filter_by(username=username).first()
+
+        if user and user.check_password(password):
+            login_user(user)
+            if user.role == 'admin':
+                return redirect(url_for('admin_dashboard'))
+            elif user.role == 'student':
+                return redirect(url_for('student_dashboard'))
+            else:
+                return redirect(url_for('home'))
+        else:
+            flash('Invalid username or password', 'error')
+
+    return render_template('login.html')
+
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for('login'))
+
+
+@app.route('/admin_dashboard')
+@login_required
+def admin_dashboard():
+    """HOD / Admin Executive Dashboard."""
+    if current_user.role != 'admin':
+        return "Unauthorized Access", 403
+    total_users = User.query.count()
+    students = User.query.filter_by(role='student').all()
+    faculty = User.query.filter_by(role='faculty').all()
+    return render_template('admin.html', total_users=total_users, students=students, faculty=faculty)
+
+
+@app.route('/student_dashboard')
+@login_required
+def student_dashboard():
+    """Personalized Student Portal."""
+    if current_user.role != 'student':
+        return "Unauthorized Access", 403
+    
+    # Calculate personal risk score using ML model
+    risk_percent = 25.0
+    at_risk = False
+    if model and scaler:
+        raw_features = np.array([[current_user.attendance, current_user.midterm, current_user.assignment, current_user.logins, current_user.study_hours]])
+        scaled_features = scaler.transform(raw_features)
+        prediction = model.predict(scaled_features)[0]
+        prob = model.predict_proba(scaled_features)[0][1] if hasattr(model, 'predict_proba') else float(prediction)
+        risk_percent = round(prob * 100, 2)
+        at_risk = bool(prediction == 1)
+
+    remediation_path = generate_personalized_path(current_user.midterm, current_user.assignment, current_user.attendance, current_user.study_hours)
+
+    return render_template(
+        'student.html', 
+        student=current_user, 
+        risk_percent=risk_percent, 
+        at_risk=at_risk, 
+        remediation_path=remediation_path
+    )
+
+
+# ==========================================
+# 5. CORE PREDICTION & OPTIMIZED CSV BATCH PROCESSING
+# ==========================================
 
 @app.route('/metrics', methods=['GET'])
 def get_metrics():
     return jsonify(metrics_summary)
 
 
-@app.route('/predict', methods=['POST'])
+@app.route('/predict', methods=['GET', 'POST'])
+@login_required
 def predict():
     """Endpoint for individual student risk assessment."""
+    if request.method == 'GET':
+        return redirect(url_for('home'))
+
     try:
         attendance = float(request.form.get('attendance', 0))
         midterm = float(request.form.get('midterm', 0))
@@ -137,6 +264,7 @@ def predict():
 
         return render_template(
             'index.html',
+            user=current_user,
             prediction_text=f'Student Failure Risk: {risk_percent}%',
             at_risk=at_risk,
             risk_percent=risk_percent,
@@ -146,17 +274,18 @@ def predict():
             study_hours=study_hours
         )
     except Exception as e:
-        return render_template('index.html', prediction_text=f'Error making prediction: {str(e)}')
+        return render_template('index.html', user=current_user, prediction_text=f'Error making prediction: {str(e)}')
 
 
 @app.route('/upload_batch', methods=['POST'])
+@login_required
 def upload_batch():
-    """Endpoint for class-wide batch CSV processing."""
+    """Optimized class-wide batch CSV processing & automatic student account creation."""
     global last_batch_results
     try:
         file = request.files.get('file')
         if not file or not file.filename.endswith('.csv'):
-            return render_template('index.html', batch_error='Please upload a valid CSV file.')
+            return render_template('index.html', user=current_user, batch_error='Please upload a valid CSV file.')
 
         df = pd.read_csv(file)
         required_cols = ['attendance', 'midterm', 'assignment', 'logins', 'study_hours']
@@ -165,8 +294,9 @@ def upload_batch():
 
         for col in required_cols:
             if col not in df.columns:
-                return render_template('index.html', batch_error=f'Missing column: {col}')
+                return render_template('index.html', user=current_user, batch_error=f'Missing column: {col}')
 
+        # 1. Fast Vectorized ML Prediction
         X = df[required_cols]
         X_scaled = scaler.transform(X)
 
@@ -177,16 +307,46 @@ def upload_batch():
             else predictions
         )
 
+        # 2. Optimized Database Operations (Single query lookup + pre-hashed password)
+        existing_users = {u.username: u for u in User.query.all()}
+        default_password_hash = generate_password_hash('student123')
+
         batch_results = []
+        new_users_to_add = []
+
         for idx, row in df.iterrows():
             risk_val = round(probabilities[idx] * 100, 1)
-            student_name = row.get('name', f'Student #{idx+1}')
+            raw_name = str(row.get('name', f'student_{idx+1}')).strip()
+            student_username = raw_name.replace(' ', '_').lower()
+            student_email = row.get('email', f'{student_username}@university.edu')
             student_id = row.get('id', f'STU-{idx+1000}')
-            student_email = row.get('email', f'student{idx+1}@university.edu')
+
+            # Fast in-memory dictionary lookup instead of repeated database calls
+            if student_username in existing_users:
+                existing_student = existing_users[student_username]
+                existing_student.attendance = float(row['attendance'])
+                existing_student.midterm = float(row['midterm'])
+                existing_student.assignment = float(row['assignment'])
+                existing_student.logins = float(row['logins'])
+                existing_student.study_hours = float(row['study_hours'])
+            else:
+                new_student = User(
+                    username=student_username,
+                    email=student_email,
+                    role='student',
+                    password_hash=default_password_hash,
+                    attendance=float(row['attendance']),
+                    midterm=float(row['midterm']),
+                    assignment=float(row['assignment']),
+                    logins=float(row['logins']),
+                    study_hours=float(row['study_hours'])
+                )
+                new_users_to_add.append(new_student)
+                existing_users[student_username] = new_student  # Prevent duplicates within same CSV
 
             batch_results.append({
                 'id': student_id,
-                'name': student_name,
+                'name': raw_name,
                 'email': student_email,
                 'attendance': row['attendance'],
                 'midterm': row['midterm'],
@@ -197,20 +357,29 @@ def upload_batch():
                 'at_risk': bool(predictions[idx] == 1 or risk_val >= 50)
             })
 
+        # Bulk save all created students
+        if new_users_to_add:
+            db.session.add_all(new_users_to_add)
+        db.session.commit()
+
         last_batch_results = batch_results
         at_risk_count = sum(1 for s in batch_results if s['at_risk'])
 
+        flash(f'Class CSV processed! Registered/Updated {len(batch_results)} students ({len(new_users_to_add)} new logins created with pass "student123").', 'success')
+
         return render_template(
             'index.html',
+            user=current_user,
             batch_results=batch_results,
             total_students=len(batch_results),
             at_risk_count=at_risk_count
         )
     except Exception as e:
-        return render_template('index.html', batch_error=f'Error processing CSV: {str(e)}')
+        return render_template('index.html', user=current_user, batch_error=f'Error processing CSV: {str(e)}')
 
 
 @app.route('/send_intervention', methods=['POST'])
+@login_required
 def send_intervention():
     """Sends an automated intervention email alert to an at-risk student."""
     try:
@@ -240,7 +409,7 @@ Our predictive analysis indicates that your current academic standing requires a
 Recommended 4-Week Remediation Roadmap:
 {remediation_text}
 
-Please contact your academic advisor or schedule a meeting during office hours to review these steps.
+Please log into your EduPredict Student Portal (Username: {student['name'].replace(' ', '_').lower()}) to complete your tailored AI practice modules.
 
 Best regards,
 EduPredict Academic Support Team
@@ -270,6 +439,7 @@ EduPredict Academic Support Team
 
 
 @app.route('/generate_practice', methods=['POST'])
+@login_required
 def generate_practice():
     """Dynamically generates 3 practice problems using Gemini AI with an offline backup set."""
     try:
@@ -289,7 +459,6 @@ def generate_practice():
         if not focus_area:
             focus_area.append("Advanced Logic & Computer Science Fundamentals")
 
-        # Fallback question bank to guarantee 100% uptime during rate limits
         fallback_questions = [
             {
                 "id": 1,
@@ -317,7 +486,8 @@ def generate_practice():
             }
         ]
 
-        prompt = f"""
+        if ai_client:
+            prompt = f"""
 You are an expert AI academic tutor. A university student has the following academic metrics:
 - Midterm Score: {midterm}%
 - Assignment Score: {assignment}%
@@ -339,52 +509,33 @@ Return the response STRICTLY as a valid JSON array of objects with the following
 ]
 Do not wrap response in markdown blocks like ```json. Return raw JSON text only.
 """
+            model_options = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-2.0-flash']
+            response = None
 
-        model_options = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-2.0-flash']
-        response = None
+            for m in model_options:
+                try:
+                    response = ai_client.models.generate_content(
+                        model=m,
+                        contents=prompt,
+                    )
+                    if response and response.text:
+                        break
+                except Exception:
+                    continue
 
-        for m in model_options:
-            try:
-                response = ai_client.models.generate_content(
-                    model=m,
-                    contents=prompt,
-                )
-                if response and response.text:
-                    break
-            except Exception:
-                continue
+            if response and response.text:
+                clean_text = response.text.replace("```json", "").replace("```", "").strip()
+                questions = json.loads(clean_text)
+                return jsonify({'success': True, 'questions': questions})
 
-        if response and response.text:
-            clean_text = response.text.replace("```json", "").replace("```", "").strip()
-            questions = json.loads(clean_text)
-            return jsonify({'success': True, 'questions': questions})
-        else:
-            # Smoothly fallback to offline question set if quota/rate limits are hit
-            return jsonify({'success': True, 'questions': fallback_questions})
+        return jsonify({'success': True, 'questions': fallback_questions})
 
-    except Exception as e:
-        # Emergency backup response
-        return jsonify({
-            'success': True,
-            'questions': [
-                {
-                    "id": 1,
-                    "topic": "Core Concept Review",
-                    "question": "What is the primary advantage of utilizing non-linear ensemble models like Random Forest over simple linear regression in academic failure prediction?",
-                    "options": [
-                        "A) Random Forest runs in O(1) time",
-                        "B) Random Forest captures non-linear feature interactions between attendance and exam scores",
-                        "C) Random Forest requires zero training data",
-                        "D) Random Forest produces deterministic outputs without trees"
-                    ],
-                    "correct_answer": "B) Random Forest captures non-linear feature interactions between attendance and exam scores",
-                    "explanation": "Academic risk factors interact in complex, non-linear ways that ensemble tree models model far more accurately than linear baselines."
-                }
-            ]
-        })
+    except Exception:
+        return jsonify({'success': True, 'questions': fallback_questions})
 
 
 @app.route('/export_report', methods=['GET'])
+@login_required
 def export_report():
     """Generates an At-Risk PDF summary report using ReportLab."""
     global last_batch_results
@@ -435,4 +586,6 @@ def export_report():
 
 
 if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()
     app.run(debug=True)
