@@ -1,36 +1,49 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Student Academic Portal - EduPredict AI</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+        }
+    </script>
 </head>
-<body class="bg-gray-900 text-gray-100 min-h-screen font-sans p-6">
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-100 min-h-screen font-sans p-6 transition-colors duration-300">
 
     <div class="max-w-6xl mx-auto space-y-6">
         
         <!-- Header Navigation -->
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-gray-800 p-6 rounded-2xl border border-gray-700 shadow-xl gap-4">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl gap-4 transition-colors">
             <div>
-                <h1 class="text-2xl font-bold text-indigo-400">🎓 Student Academic Portal</h1>
-                <p class="text-xs text-gray-400">Welcome back, <span class="text-white font-semibold">{{ student.username }}</span> ({{ student.email }})</p>
+                <h1 class="text-2xl font-bold text-indigo-600 dark:text-indigo-400">🎓 Student Academic Portal</h1>
+                <p class="text-xs text-gray-500 dark:text-gray-400">Welcome back, <span class="text-gray-900 dark:text-white font-semibold">{{ student.username }}</span> ({{ student.email }})</p>
             </div>
-            <a href="/logout" class="bg-red-600/80 hover:bg-red-500 text-white text-xs px-4 py-2.5 rounded-xl transition font-semibold shadow-md">
-                Log Out
-            </a>
+            
+            <div class="flex items-center gap-3">
+                <!-- Theme Toggle Button -->
+                <button onclick="toggleTheme()" class="p-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-xs font-semibold text-gray-700 dark:text-gray-200 transition">
+                    <span id="themeIcon">☀️ Light Mode</span>
+                </button>
+                
+                <a href="/logout" class="bg-red-600/90 hover:bg-red-500 text-white text-xs px-4 py-2.5 rounded-xl transition font-semibold shadow-md">
+                    Log Out
+                </a>
+            </div>
         </div>
 
         <!-- Aggregate Risk Summary Banner -->
-        <div class="bg-gray-800 border border-gray-700 p-6 rounded-2xl shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-6 rounded-2xl shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 transition-colors">
             <div>
-                <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Overall Aggregate Failure Risk</h2>
-                <div class="text-3xl font-extrabold mt-1 {% if at_risk %}text-red-400{% else %}text-emerald-400{% endif %}">
+                <h2 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Overall Aggregate Failure Risk</h2>
+                <div class="text-3xl font-extrabold mt-1 {% if at_risk %}text-red-500 dark:text-red-400{% else %}text-emerald-600 dark:text-emerald-400{% endif %}">
                     {{ risk_percent }}%
                     {% if at_risk %}
-                        <span class="text-xs font-semibold bg-red-950 text-red-300 border border-red-800 px-3 py-1 rounded-full ml-2">⚠️ High Academic Risk</span>
+                        <span class="text-xs font-semibold bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 border border-red-300 dark:border-red-800 px-3 py-1 rounded-full ml-2">⚠️ High Academic Risk</span>
                     {% else %}
-                        <span class="text-xs font-semibold bg-emerald-950 text-emerald-300 border border-emerald-800 px-3 py-1 rounded-full ml-2">✅ Good Standing</span>
+                        <span class="text-xs font-semibold bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 px-3 py-1 rounded-full ml-2">✅ Good Standing</span>
                     {% endif %}
                 </div>
             </div>
@@ -41,47 +54,47 @@
 
         <!-- Per-Subject Cards Section -->
         <div class="space-y-4">
-            <h2 class="text-lg font-bold text-gray-200">Course Breakdown & Subject Metrics</h2>
+            <h2 class="text-lg font-bold text-gray-800 dark:text-gray-200">Course Breakdown & Subject Metrics</h2>
             
             {% if subject_cards %}
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {% for card in subject_cards %}
-                    <div class="bg-gray-800 border border-gray-700 rounded-2xl p-6 shadow-xl space-y-4 flex flex-col justify-between">
+                    <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-xl space-y-4 flex flex-col justify-between transition-colors">
                         <div>
                             <!-- Card Header -->
-                            <div class="flex justify-between items-start border-b border-gray-700/80 pb-3 mb-4">
-                                <h3 class="font-bold text-indigo-300 text-base">{{ card.subject }}</h3>
-                                <span class="text-xs font-bold px-2.5 py-1 rounded-full {% if card.at_risk %}bg-red-950 text-red-300 border border-red-800{% else %}bg-emerald-950 text-emerald-300 border border-emerald-800{% endif %}">
+                            <div class="flex justify-between items-start border-b border-gray-200 dark:border-gray-700/80 pb-3 mb-4">
+                                <h3 class="font-bold text-indigo-600 dark:text-indigo-300 text-base">{{ card.subject }}</h3>
+                                <span class="text-xs font-bold px-2.5 py-1 rounded-full {% if card.at_risk %}bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 border border-red-300 dark:border-red-800{% else %}bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800{% endif %}">
                                     Risk: {{ card.risk_percent }}%
                                 </span>
                             </div>
 
                             <!-- Subject Performance Metrics -->
                             <div class="grid grid-cols-4 gap-2 text-center text-xs mb-4">
-                                <div class="bg-gray-900 p-2.5 rounded-xl border border-gray-700/50">
-                                    <span class="block text-gray-400 text-[10px]">Attendance</span>
-                                    <span class="font-bold text-white text-sm">{{ card.attendance }}%</span>
+                                <div class="bg-gray-50 dark:bg-gray-900 p-2.5 rounded-xl border border-gray-200 dark:border-gray-700/50">
+                                    <span class="block text-gray-500 dark:text-gray-400 text-[10px]">Attendance</span>
+                                    <span class="font-bold text-gray-800 dark:text-white text-sm">{{ card.attendance }}%</span>
                                 </div>
-                                <div class="bg-gray-900 p-2.5 rounded-xl border border-gray-700/50">
-                                    <span class="block text-gray-400 text-[10px]">Midterm</span>
-                                    <span class="font-bold text-white text-sm">{{ card.midterm }}%</span>
+                                <div class="bg-gray-50 dark:bg-gray-900 p-2.5 rounded-xl border border-gray-200 dark:border-gray-700/50">
+                                    <span class="block text-gray-500 dark:text-gray-400 text-[10px]">Midterm</span>
+                                    <span class="font-bold text-gray-800 dark:text-white text-sm">{{ card.midterm }}%</span>
                                 </div>
-                                <div class="bg-gray-900 p-2.5 rounded-xl border border-gray-700/50">
-                                    <span class="block text-gray-400 text-[10px]">Assignment</span>
-                                    <span class="font-bold text-white text-sm">{{ card.assignment }}%</span>
+                                <div class="bg-gray-50 dark:bg-gray-900 p-2.5 rounded-xl border border-gray-200 dark:border-gray-700/50">
+                                    <span class="block text-gray-500 dark:text-gray-400 text-[10px]">Assignment</span>
+                                    <span class="font-bold text-gray-800 dark:text-white text-sm">{{ card.assignment }}%</span>
                                 </div>
-                                <div class="bg-gray-900 p-2.5 rounded-xl border border-gray-700/50">
-                                    <span class="block text-gray-400 text-[10px]">Study Hrs/Wk</span>
-                                    <span class="font-bold text-white text-sm">{{ card.study_hours }}h</span>
+                                <div class="bg-gray-50 dark:bg-gray-900 p-2.5 rounded-xl border border-gray-200 dark:border-gray-700/50">
+                                    <span class="block text-gray-500 dark:text-gray-400 text-[10px]">Study Hrs/Wk</span>
+                                    <span class="font-bold text-gray-800 dark:text-white text-sm">{{ card.study_hours }}h</span>
                                 </div>
                             </div>
 
                             <!-- AI Remediation Roadmap -->
                             <div class="space-y-2">
-                                <span class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Targeted Remediation Plan</span>
+                                <span class="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Targeted Remediation Plan</span>
                                 {% for step in card.remediation %}
-                                    <div class="text-xs bg-gray-900/80 border border-gray-700/60 p-2.5 rounded-xl text-gray-300">
-                                        <span class="font-bold text-indigo-400">{{ step.phase }}:</span> {{ step.recommendation }}
+                                    <div class="text-xs bg-gray-50 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-700/60 p-2.5 rounded-xl text-gray-700 dark:text-gray-300">
+                                        <span class="font-bold text-indigo-600 dark:text-indigo-400">{{ step.phase }}:</span> {{ step.recommendation }}
                                     </div>
                                 {% endfor %}
                             </div>
@@ -90,8 +103,8 @@
                     {% endfor %}
                 </div>
             {% else %}
-                <div class="bg-gray-800 border border-gray-700 rounded-2xl p-8 text-center text-gray-400 text-sm">
-                    No course records assigned yet. Once faculty members process their class CSVs, your per-subject performance will appear here automatically!
+                <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-8 text-center text-gray-500 dark:text-gray-400 text-sm">
+                    No course records assigned yet.
                 </div>
             {% endif %}
         </div>
@@ -99,23 +112,50 @@
     </div>
 
     <!-- Gemini AI Practice Modal -->
-    <div id="quizModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
-        <div class="bg-gray-800 border border-gray-700 rounded-2xl max-w-xl w-full p-6 space-y-4 shadow-2xl">
-            <div class="flex justify-between items-center border-b border-gray-700 pb-3">
-                <h3 class="font-bold text-indigo-400 text-base">✨ AI-Generated Skill Practice</h3>
-                <button onclick="closePracticeModal()" class="text-gray-400 hover:text-white text-sm font-bold">✕</button>
+    <div id="quizModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+        <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl max-w-xl w-full p-6 space-y-4 shadow-2xl">
+            <div class="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-3">
+                <h3 class="font-bold text-indigo-600 dark:text-indigo-400 text-base">✨ AI-Generated Skill Practice</h3>
+                <button onclick="closePracticeModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-white text-sm font-bold">✕</button>
             </div>
             
-            <div id="quizContent" class="space-y-3 text-xs text-gray-300 min-h-[180px] flex items-center justify-center">
+            <div id="quizContent" class="space-y-3 text-xs text-gray-700 dark:text-gray-300 min-h-[180px] flex items-center justify-center">
                 <div class="text-center space-y-2">
-                    <div class="animate-spin inline-block w-6 h-6 border-2 border-indigo-400 border-t-transparent rounded-full"></div>
-                    <p class="text-xs text-gray-400">Generating customized computer science questions using Gemini AI...</p>
+                    <div class="animate-spin inline-block w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full"></div>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Generating customized questions using Gemini AI...</p>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
+        // --- Theme Toggle Logic ---
+        function applyTheme(theme) {
+            const html = document.documentElement;
+            const icon = document.getElementById('themeIcon');
+            if (theme === 'dark') {
+                html.classList.add('dark');
+                icon.innerHTML = '🌙 Dark Mode';
+                localStorage.setItem('theme', 'dark');
+            } else {
+                html.classList.remove('dark');
+                icon.innerHTML = '☀️ Light Mode';
+                localStorage.setItem('theme', 'light');
+            }
+        }
+
+        function toggleTheme() {
+            const currentTheme = localStorage.getItem('theme') || 'dark';
+            applyTheme(currentTheme === 'dark' ? 'light' : 'dark');
+        }
+
+        // Initialize Theme from localStorage
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            applyTheme(savedTheme);
+        });
+
+        // --- Practice Quiz Modal Logic ---
         function openPracticeModal() {
             const modal = document.getElementById('quizModal');
             modal.classList.remove('hidden');
@@ -132,25 +172,25 @@
                     let html = '';
                     data.questions.forEach((q, i) => {
                         html += `
-                            <div class="bg-gray-900 border border-gray-700/80 p-3.5 rounded-xl space-y-2">
-                                <p class="font-bold text-indigo-300">${i+1}. ${q.question}</p>
+                            <div class="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700/80 p-3.5 rounded-xl space-y-2">
+                                <p class="font-bold text-indigo-600 dark:text-indigo-300">${i+1}. ${q.question}</p>
                                 <div class="grid grid-cols-2 gap-2 font-mono text-[11px]">
-                                    ${q.options.map(opt => `<div class="bg-gray-800 p-2 rounded-lg border border-gray-700/60">${opt}</div>`).join('')}
+                                    ${q.options.map(opt => `<div class="bg-white dark:bg-gray-800 p-2 rounded-lg border border-gray-200 dark:border-gray-700/60">${opt}</div>`).join('')}
                                 </div>
-                                <div class="text-[11px] bg-emerald-950/60 border border-emerald-800/60 p-2 rounded-lg text-emerald-300 mt-1">
+                                <div class="text-[11px] bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/60 p-2 rounded-lg text-emerald-700 dark:text-emerald-300 mt-1">
                                     <span class="font-bold">Correct Answer:</span> ${q.correct_answer}<br>
-                                    <span class="text-[10px] text-gray-400">${q.explanation || ''}</span>
+                                    <span class="text-[10px] text-gray-500 dark:text-gray-400">${q.explanation || ''}</span>
                                 </div>
                             </div>
                         `;
                     });
                     document.getElementById('quizContent').innerHTML = `<div class="space-y-3 w-full">${html}</div>`;
                 } else {
-                    document.getElementById('quizContent').innerHTML = '<span class="text-red-400 font-semibold">Unable to generate questions at this time. Please try again.</span>';
+                    document.getElementById('quizContent').innerHTML = '<span class="text-red-500 font-semibold">Unable to generate questions at this time.</span>';
                 }
             })
             .catch(() => {
-                document.getElementById('quizContent').innerHTML = '<span class="text-red-400 font-semibold">Network error loading quiz questions.</span>';
+                document.getElementById('quizContent').innerHTML = '<span class="text-red-500 font-semibold">Network error loading quiz questions.</span>';
             });
         }
 

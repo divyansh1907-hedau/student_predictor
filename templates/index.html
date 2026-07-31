@@ -1,343 +1,215 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EduPredict AI - Student Risk Analytics & Batch Processing</title>
+    <title>EduPredict AI - Faculty & Advisor Portal</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+        }
+    </script>
 </head>
-<body class="bg-gray-900 text-gray-100 min-h-screen font-sans flex flex-col justify-between">
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-100 min-h-screen font-sans p-6 transition-colors duration-300">
 
-    <!-- Header -->
-    <header class="bg-gray-800 border-b border-gray-700 p-4 shadow-md">
-        <div class="max-w-6xl mx-auto flex justify-between items-center">
-            <h1 class="text-2xl font-bold tracking-tight text-indigo-400">🎓 EduPredict AI</h1>
-            <span class="text-sm bg-indigo-950 text-indigo-300 px-3 py-1 rounded-full border border-indigo-700">
-                UCI Benchmark Data • Multi-Model & Batch Analytics
-            </span>
+    <div class="max-w-7xl mx-auto space-y-6">
+
+        <!-- Top Header Navigation -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl gap-4 transition-colors">
+            <div>
+                <h1 class="text-2xl font-bold text-indigo-600 dark:text-indigo-400">🎓 EduPredict AI — Faculty Portal</h1>
+                <p class="text-xs text-gray-500 dark:text-gray-400">
+                    LoggedIn as <span class="text-gray-900 dark:text-white font-semibold">{{ user.username }}</span> 
+                    | Assigned Subject: <span class="text-indigo-600 dark:text-indigo-300 font-bold">[{{ user.subject or 'General' }}]</span>
+                </p>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <!-- Theme Toggle Button -->
+                <button onclick="toggleTheme()" class="p-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-xs font-semibold text-gray-700 dark:text-gray-200 transition">
+                    <span id="themeIcon">☀️ Light Mode</span>
+                </button>
+
+                <a href="/logout" class="bg-red-600/90 hover:bg-red-500 text-white text-xs px-4 py-2.5 rounded-xl transition font-semibold shadow-md">
+                    Log Out
+                </a>
+            </div>
         </div>
-    </header>
 
-    <!-- Global Toast Notification Banner -->
-    <div id="toastNotification" class="fixed top-5 right-5 z-50 hidden bg-indigo-900 border border-indigo-500 text-white px-5 py-3 rounded-xl shadow-2xl transition duration-300 flex items-center space-x-3">
-        <span class="text-xl">✉️</span>
-        <span id="toastMessage" class="text-xs font-semibold">Intervention alert sent!</span>
-    </div>
+        <!-- Flash Alert Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="p-4 rounded-xl text-xs font-semibold border {% if category == 'success' %}bg-emerald-50 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800{% else %}bg-red-50 dark:bg-red-950 text-red-800 dark:text-red-300 border-red-300 dark:border-red-800{% endif %} shadow-md">
+                {{ message }}
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
 
-    <!-- Main Content Grid -->
-    <main class="max-w-6xl mx-auto p-6 w-full space-y-8">
-        
-        <!-- SECTION 1: INDIVIDUAL PREDICTION INTERFACE -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-            
-            <!-- Input Form -->
-            <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-xl">
-                <h2 class="text-xl font-semibold mb-4 text-gray-200">📊 Enter Single Student Data</h2>
-                
-                <form action="/predict" method="POST" class="space-y-4">
+        <!-- Grid Section: Individual Predictor & Batch CSV Upload -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+            <!-- 1. Single Student Failure Risk Predictor -->
+            <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-xl space-y-4 transition-colors">
+                <h2 class="text-lg font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                    🎯 Single Student Risk Analysis
+                </h2>
+                <p class="text-xs text-gray-500 dark:text-gray-400">Evaluate student failure risk instantly using scaled parameters.</p>
+
+                <form action="/predict" method="POST" class="space-y-3 text-xs">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block font-semibold mb-1 text-gray-700 dark:text-gray-300">Attendance (%)</label>
+                            <input type="number" step="0.1" name="attendance" value="{{ attendance or 75 }}" required class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl p-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block font-semibold mb-1 text-gray-700 dark:text-gray-300">Midterm Marks (%)</label>
+                            <input type="number" step="0.1" name="midterm" value="{{ midterm or 60 }}" required class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl p-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block font-semibold mb-1 text-gray-700 dark:text-gray-300">Assignment (%)</label>
+                            <input type="number" step="0.1" name="assignment" value="{{ assignment or 60 }}" required class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl p-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block font-semibold mb-1 text-gray-700 dark:text-gray-300">Portal Logins/Wk</label>
+                            <input type="number" step="0.1" name="logins" value="{{ logins or 12 }}" required class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl p-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-indigo-500">
+                        </div>
+                    </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-400 mb-1">Attendance Percentage (%)</label>
-                        <input type="number" step="0.1" min="0" max="100" name="attendance" required 
-                               class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="e.g. 65">
+                        <label class="block font-semibold mb-1 text-gray-700 dark:text-gray-300">Weekly Study Hours</label>
+                        <input type="number" step="0.1" name="study_hours" value="{{ study_hours or 5 }}" required class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl p-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-indigo-500">
                     </div>
-
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-400 mb-1">Midterm Score (%)</label>
-                            <input type="number" step="0.1" min="0" max="100" name="midterm" required 
-                                   class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="e.g. 45">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-400 mb-1">Assignment Score (%)</label>
-                            <input type="number" step="0.1" min="0" max="100" name="assignment" required 
-                                   class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="e.g. 50">
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-400 mb-1">LMS Logins / Month</label>
-                            <input type="number" name="logins" required 
-                                   class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="e.g. 12">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-400 mb-1">Weekly Study Hours</label>
-                            <input type="number" step="0.1" name="study_hours" required 
-                                   class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="e.g. 4">
-                        </div>
-                    </div>
-
-                    <button type="submit" 
-                            class="w-full mt-4 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 rounded-lg transition duration-200 shadow-lg shadow-indigo-600/30">
-                        Assess Student Risk & Generate Path 🚀
+                    <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl transition shadow-lg shadow-indigo-600/30">
+                        Calculate Individual Risk Score
                     </button>
                 </form>
-            </div>
 
-            <!-- Single Result Output -->
-            <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-xl flex flex-col justify-between">
-                <div>
-                    <h2 class="text-xl font-semibold mb-4 text-gray-200">🎯 Prediction & Diagnostics</h2>
-
-                    {% if prediction_text %}
-                        <div class="flex items-center justify-between mb-4 p-4 rounded-lg border 
-                            {% if at_risk %} bg-red-950/50 border-red-800 text-red-200 {% else %} bg-emerald-950/50 border-emerald-800 text-emerald-200 {% endif %}">
-                            <div>
-                                <span class="text-xs uppercase tracking-wider font-bold text-gray-400">Risk Assessment</span>
-                                <p class="text-xl font-bold">{{ prediction_text }}</p>
-                            </div>
-                            <span class="px-3 py-1 text-sm font-semibold rounded-full 
-                                {% if at_risk %} bg-red-800 text-white {% else %} bg-emerald-700 text-white {% endif %}">
-                                {% if at_risk %} AT RISK {% else %} LOW RISK {% endif %}
-                            </span>
-                        </div>
-
-                        <div class="mb-6">
-                            <div class="flex justify-between text-sm font-medium mb-1">
-                                <span class="text-gray-400">Risk Severity Score</span>
-                                <span class="text-indigo-400 font-bold">{{ risk_percent }}%</span>
-                            </div>
-                            <div class="w-full bg-gray-900 rounded-full h-4 overflow-hidden border border-gray-700">
-                                <div class="h-4 rounded-full transition-all duration-700 ease-out 
-                                    {% if risk_percent > 70 %} bg-gradient-to-r from-orange-500 to-red-600 
-                                    {% elif risk_percent > 40 %} bg-gradient-to-r from-yellow-500 to-amber-500 
-                                    {% else %} bg-gradient-to-r from-teal-400 to-emerald-500 {% endif %}" 
-                                    style="width: {{ risk_percent }}%;">
-                                </div>
-                            </div>
-                        </div>
-
-                        {% if remediation_path %}
-                            <div class="mt-4 border-t border-gray-700 pt-4">
-                                <h3 class="text-md font-semibold text-indigo-300 mb-3">⚡ Personalized Remediation Path</h3>
-                                <div class="space-y-3">
-                                    {% for item in remediation_path %}
-                                        <div class="p-3 bg-gray-900 rounded-lg border border-gray-700/60 text-sm">
-                                            <div class="flex justify-between items-center mb-1">
-                                                <span class="font-semibold text-gray-200">{{ item.phase }}</span>
-                                                <span class="text-xs px-2 py-0.5 rounded bg-indigo-950 text-indigo-400 border border-indigo-800">{{ item.type }}</span>
-                                            </div>
-                                            <p class="text-gray-400 text-xs">{{ item.recommendation }}</p>
-                                        </div>
-                                    {% endfor %}
-                                </div>
-                            </div>
-                        {% endif %}
-
-                        <!-- AI Practice Generator Trigger -->
-                        <div class="mt-6 pt-4 border-t border-gray-700">
-                            <button onclick="openPracticeModal({{ midterm }}, {{ assignment }}, {{ study_hours }})"
-                                    class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition duration-200 flex items-center justify-center space-x-2">
-                                <span>✨ Launch AI Skill Recovery Practice</span>
-                            </button>
-                        </div>
-
-                    {% else %}
-                        <div class="text-center py-16 text-gray-500">
-                            <svg class="w-16 h-16 mx-auto mb-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                            </svg>
-                            <p>Enter individual values above or upload a Class CSV below to process batch predictions.</p>
-                        </div>
-                    {% endif %}
+                {% if prediction_text %}
+                <div class="p-4 rounded-xl border mt-4 {% if at_risk %}bg-red-50 dark:bg-red-950 border-red-300 dark:border-red-800 text-red-700 dark:text-red-300{% else %}bg-emerald-50 dark:bg-emerald-950 border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300{% endif %}">
+                    <h3 class="font-extrabold text-sm">{{ prediction_text }}</h3>
+                    <p class="text-xs mt-1">Status: {% if at_risk %}⚠️ Flagged At-Risk{% else %}✅ Performing Well{% endif %}</p>
                 </div>
-            </div>
-        </div>
-
-        <!-- SECTION 2: BATCH CSV UPLOAD & CLASS ANALYTICS -->
-        <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-xl space-y-6">
-            <div class="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-gray-700 pb-4">
-                <div>
-                    <h2 class="text-xl font-bold text-gray-200">📁 Class-Wide Batch CSV Analysis</h2>
-                    <p class="text-sm text-gray-400">Upload a spreadsheet containing student records to generate risk predictions for the whole class.</p>
-                </div>
-                {% if batch_results %}
-                    <a href="/export_report" 
-                       class="mt-3 md:mt-0 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs px-4 py-2.5 rounded-lg border border-emerald-500 transition duration-200 flex items-center space-x-2 shadow-lg shadow-emerald-600/30">
-                        <span>📥 Download PDF At-Risk Report</span>
-                    </a>
                 {% endif %}
             </div>
 
-            <!-- CSV Upload Form -->
-            <form action="/upload_batch" method="POST" enctype="multipart/form-data" class="flex flex-col sm:flex-row items-center gap-4 bg-gray-900 p-4 rounded-xl border border-gray-700">
-                <input type="file" name="file" accept=".csv" required 
-                       class="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-950 file:text-indigo-300 hover:file:bg-indigo-900 cursor-pointer">
-                <button type="submit" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-6 py-2.5 rounded-lg whitespace-nowrap transition duration-200">
-                    Process Class CSV 🚀
-                </button>
-            </form>
+            <!-- 2. Class-Wide Batch CSV Upload -->
+            <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-xl space-y-4 flex flex-col justify-between transition-colors">
+                <div>
+                    <h2 class="text-lg font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                        📁 Class-Wide Batch CSV Analysis
+                    </h2>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Upload a spreadsheet to generate risk predictions & auto-register accounts for <span class="font-semibold text-indigo-600 dark:text-indigo-400">[{{ user.subject or 'General' }}]</span>.
+                    </p>
 
-            {% if batch_error %}
-                <div class="p-3 bg-red-950/80 border border-red-800 text-red-300 rounded-lg text-xs">
+                    <form action="/upload_batch" method="POST" enctype="multipart/form-data" class="mt-6 space-y-4">
+                        <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-indigo-500 dark:hover:border-indigo-400 rounded-2xl p-6 text-center bg-gray-50 dark:bg-gray-900/50 transition">
+                            <input type="file" name="file" accept=".csv" required class="block w-full text-xs text-gray-500 dark:text-gray-400 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 cursor-pointer">
+                            <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-2">Upload `.csv` files containing attendance, midterm, assignment, logins, study_hours.</p>
+                        </div>
+
+                        <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition shadow-lg shadow-emerald-600/30 text-xs">
+                            Process Class CSV
+                        </button>
+                    </form>
+                </div>
+
+                {% if batch_error %}
+                <div class="p-3 bg-red-50 dark:bg-red-950 border border-red-300 dark:border-red-800 text-red-700 dark:text-red-300 rounded-xl text-xs font-semibold">
                     {{ batch_error }}
                 </div>
-            {% endif %}
+                {% endif %}
+            </div>
 
-            <!-- Batch Results Table & Filter Toolbar -->
-            {% if batch_results %}
-                <div class="space-y-4">
-                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gray-900/60 p-3 rounded-lg border border-gray-700/60 text-xs">
-                        <div class="flex items-center space-x-4 text-gray-400">
-                            <span>Total Processed: <strong class="text-white">{{ total_students }}</strong></span>
-                            <span>Flagged At-Risk: <strong class="text-red-400">{{ at_risk_count }}</strong></span>
-                        </div>
-
-                        <!-- Status Filter Dropdown -->
-                        <div class="flex items-center space-x-2">
-                            <label class="text-gray-400 font-medium">Filter by Status:</label>
-                            <select id="statusFilter" onchange="filterBatchTable()" class="bg-gray-800 border border-gray-700 rounded-md text-white text-xs px-3 py-1.5 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer">
-                                <option value="ALL">Show All Students</option>
-                                <option value="AT_RISK">⚠️ At-Risk Only</option>
-                                <option value="SAFE">✅ Safe Only</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="overflow-x-auto rounded-lg border border-gray-700 max-h-[500px] overflow-y-auto">
-                        <table class="w-full text-left text-xs text-gray-300">
-                            <thead class="text-gray-400 uppercase bg-gray-900 sticky top-0 border-b border-gray-700 z-10">
-                                <tr>
-                                    <th class="py-3 px-3">Student ID</th>
-                                    <th class="py-3 px-3">Name</th>
-                                    <th class="py-3 px-3">Attendance</th>
-                                    <th class="py-3 px-3">Midterm</th>
-                                    <th class="py-3 px-3">Assignment</th>
-                                    <th class="py-3 px-3">Risk Score</th>
-                                    <th class="py-3 px-3">Status</th>
-                                    <th class="py-3 px-3 text-center">Intervention Action</th>
-                                </tr>
-                            </thead>
-                            <tbody id="batchTableBody" class="divide-y divide-gray-800">
-                                {% for s in batch_results %}
-                                    <tr class="student-row hover:bg-gray-800/60 transition" data-status="{% if s.at_risk %}AT_RISK{% else %}SAFE{% endif %}">
-                                        <td class="py-2.5 px-3 font-mono text-gray-400">{{ s.id }}</td>
-                                        <td class="py-2.5 px-3 font-medium text-white">{{ s.name }}</td>
-                                        <td class="py-2.5 px-3">{{ s.attendance }}%</td>
-                                        <td class="py-2.5 px-3">{{ s.midterm }}%</td>
-                                        <td class="py-2.5 px-3">{{ s.assignment }}%</td>
-                                        <td class="py-2.5 px-3 font-bold {% if s.at_risk %} text-red-400 {% else %} text-emerald-400 {% endif %}">
-                                            {{ s.risk_percent }}%
-                                        </td>
-                                        <td class="py-2.5 px-3">
-                                            <span class="px-2 py-0.5 text-[10px] font-bold rounded-full 
-                                                {% if s.at_risk %} bg-red-950 text-red-300 border border-red-800 {% else %} bg-emerald-950 text-emerald-300 border border-emerald-800 {% endif %}">
-                                                {% if s.at_risk %} AT RISK {% else %} SAFE {% endif %}
-                                            </span>
-                                        </td>
-                                        <td class="py-2.5 px-3 text-center">
-                                            {% if s.at_risk %}
-                                                <button onclick="sendIntervention('{{ s.id }}')" 
-                                                        class="bg-rose-900/60 hover:bg-rose-800 text-rose-200 border border-rose-700 text-[10px] font-semibold px-2.5 py-1 rounded transition duration-150">
-                                                    ✉️ Send Alert
-                                                </button>
-                                            {% else %}
-                                                <span class="text-gray-600 text-[10px]">—</span>
-                                            {% endif %}
-                                        </td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            {% endif %}
         </div>
 
-        <!-- SECTION 3: MODEL BENCHMARK ANALYTICS DASHBOARD -->
-        <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-xl space-y-6">
-            <div class="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-gray-700 pb-4">
+        <!-- Batch Upload Results Table & Export Tools -->
+        {% if batch_results %}
+        <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-xl space-y-4 transition-colors">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-gray-200 dark:border-gray-700 pb-4">
                 <div>
-                    <h2 class="text-xl font-bold text-gray-200">📈 Model Evaluation & Algorithm Benchmarks</h2>
-                    <p class="text-sm text-gray-400">Comparative analytics across 5 machine learning models trained on the UCI Dataset.</p>
+                    <h2 class="text-base font-bold text-gray-900 dark:text-gray-100">
+                        Class Batch Results — {{ user.subject or 'General' }}
+                    </h2>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Total Analyzed: <span class="font-bold text-gray-800 dark:text-white">{{ total_students }}</span> | Flagged At-Risk: <span class="font-bold text-red-500 dark:text-red-400">{{ at_risk_count }}</span></p>
                 </div>
-                <span class="mt-2 md:mt-0 text-xs bg-emerald-950 text-emerald-400 border border-emerald-800 px-3 py-1 rounded-full font-semibold">
-                    Production Engine: Random Forest
-                </span>
+
+                <a href="/export_report" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs px-4 py-2.5 rounded-xl transition shadow-md">
+                    📥 Download PDF Summary Report
+                </a>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
-                <div class="lg:col-span-2 bg-gray-900 p-4 rounded-xl border border-gray-700/60">
-                    <h3 class="text-sm font-semibold text-indigo-300 mb-3">Model Accuracy & ROC-AUC Comparison (%)</h3>
-                    <div class="h-64">
-                        <canvas id="metricsChart"></canvas>
-                    </div>
-                </div>
-
-                <div class="bg-gray-900 p-4 rounded-xl border border-gray-700/60 overflow-x-auto">
-                    <h3 class="text-sm font-semibold text-indigo-300 mb-3">Performance Matrix</h3>
-                    <table class="w-full text-left text-xs text-gray-300">
-                        <thead class="text-gray-400 uppercase bg-gray-800 border-b border-gray-700">
-                            <tr>
-                                <th class="py-2 px-2">Algorithm</th>
-                                <th class="py-2 px-2">Accuracy</th>
-                                <th class="py-2 px-2">F1</th>
-                                <th class="py-2 px-2">ROC-AUC</th>
-                            </tr>
-                        </thead>
-                        <tbody id="metricsTableBody">
-                            <tr>
-                                <td colspan="4" class="text-center py-4 text-gray-500">Loading benchmark metrics...</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+            <!-- Table Container -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs text-gray-700 dark:text-gray-300">
+                    <thead class="bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-400 uppercase text-[10px] tracking-wider">
+                        <tr>
+                            <th class="p-3 rounded-l-xl">Student ID</th>
+                            <th class="p-3">Name</th>
+                            <th class="p-3">Attendance</th>
+                            <th class="p-3">Midterm</th>
+                            <th class="p-3">Assignment</th>
+                            <th class="p-3">Failure Risk</th>
+                            <th class="p-3 text-right rounded-r-xl">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200 dark:divide-gray-700/60 font-mono">
+                        {% for s in batch_results %}
+                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
+                            <td class="p-3 font-semibold text-indigo-600 dark:text-indigo-400">{{ s.id }}</td>
+                            <td class="p-3 font-sans font-medium text-gray-900 dark:text-white">{{ s.name }}</td>
+                            <td class="p-3">{{ s.attendance }}%</td>
+                            <td class="p-3">{{ s.midterm }}%</td>
+                            <td class="p-3">{{ s.assignment }}%</td>
+                            <td class="p-3 font-bold {% if s.at_risk %}text-red-500 dark:text-red-400{% else %}text-emerald-600 dark:text-emerald-400{% endif %}">
+                                {{ s.risk_percent }}%
+                            </td>
+                            <td class="p-3 text-right">
+                                {% if s.at_risk %}
+                                    <button onclick="sendIntervention('{{ s.id }}')" class="bg-red-600/90 hover:bg-red-500 text-white text-[10px] font-sans font-semibold px-3 py-1.5 rounded-lg transition shadow-sm">
+                                        📩 Send Alert
+                                    </button>
+                                {% else %}
+                                    <span class="text-[10px] font-sans text-emerald-600 dark:text-emerald-400 font-semibold">On Track</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
+        {% endif %}
 
-    </main>
-
-    <!-- AI Practice Modal -->
-    <div id="practiceModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-gray-800 border border-gray-700 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl space-y-6">
-            <div class="flex justify-between items-center border-b border-gray-700 pb-3">
-                <h2 class="text-xl font-bold text-indigo-300 flex items-center space-x-2">
-                    <span>🤖 AI Practice Generator</span>
-                </h2>
-                <button onclick="closePracticeModal()" class="text-gray-400 hover:text-white text-xl">&times;</button>
-            </div>
-
-            <div id="practiceLoader" class="text-center py-12 space-y-3">
-                <div class="inline-block animate-spin rounded-full h-10 w-10 border-4 border-indigo-500 border-t-transparent"></div>
-                <p class="text-sm text-gray-400">Analyzing weak points & crafting custom questions using Gemini AI...</p>
-            </div>
-
-            <div id="practiceContainer" class="hidden space-y-6">
-                <div id="questionsList" class="space-y-6"></div>
-            </div>
-        </div>
     </div>
 
-    <footer class="text-center py-4 text-xs text-gray-500 border-t border-gray-800">
-        EduPredict AI • Major Engineering Project
-    </footer>
-
-    <!-- Scripts -->
+    <!-- Theme Logic JavaScript -->
     <script>
-        function filterBatchTable() {
-            const filterValue = document.getElementById('statusFilter').value;
-            const rows = document.querySelectorAll('.student-row');
-
-            rows.forEach(row => {
-                const rowStatus = row.getAttribute('data-status');
-                if (filterValue === 'ALL' || rowStatus === filterValue) {
-                    row.style.display = '';
-                } else {
-                    row.style.display = 'none';
-                }
-            });
+        function applyTheme(theme) {
+            const html = document.documentElement;
+            const icon = document.getElementById('themeIcon');
+            if (theme === 'dark') {
+                html.classList.add('dark');
+                if (icon) icon.innerHTML = '🌙 Dark Mode';
+                localStorage.setItem('theme', 'dark');
+            } else {
+                html.classList.remove('dark');
+                if (icon) icon.innerHTML = '☀️ Light Mode';
+                localStorage.setItem('theme', 'light');
+            }
         }
 
-        function showToast(msg) {
-            const toast = document.getElementById('toastNotification');
-            const toastMsg = document.getElementById('toastMessage');
-            toastMsg.innerText = msg;
-            toast.classList.remove('hidden');
-            setTimeout(() => {
-                toast.classList.add('hidden');
-            }, 4000);
+        function toggleTheme() {
+            const currentTheme = localStorage.getItem('theme') || 'dark';
+            applyTheme(currentTheme === 'dark' ? 'light' : 'dark');
         }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            applyTheme(savedTheme);
+        });
 
         function sendIntervention(studentId) {
             fetch('/send_intervention', {
@@ -346,164 +218,9 @@
                 body: JSON.stringify({ student_id: studentId })
             })
             .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    showToast(data.message);
-                } else {
-                    alert('Error sending alert: ' + data.message);
-                }
-            })
-            .catch(err => alert('Network error while dispatching alert.'));
+            .then(data => alert(data.message))
+            .catch(() => alert('Failed to dispatch alert.'));
         }
-
-        function openPracticeModal(midterm, assignment, studyHours) {
-            document.getElementById('practiceModal').classList.remove('hidden');
-            document.getElementById('practiceLoader').classList.remove('hidden');
-            document.getElementById('practiceContainer').classList.add('hidden');
-
-            fetch('/generate_practice', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ midterm: midterm, assignment: assignment, study_hours: studyHours })
-            })
-            .then(res => res.json())
-            .then(data => {
-                document.getElementById('practiceLoader').classList.add('hidden');
-                document.getElementById('practiceContainer').classList.remove('hidden');
-
-                if (data.success) {
-                    renderQuestions(data.questions);
-                } else {
-                    document.getElementById('questionsList').innerHTML = `<p class="text-red-400 text-sm">${data.message}</p>`;
-                }
-            })
-            .catch(err => {
-                document.getElementById('practiceLoader').classList.add('hidden');
-                document.getElementById('practiceContainer').classList.remove('hidden');
-                document.getElementById('questionsList').innerHTML = `<p class="text-red-400 text-sm">Error connecting to AI service.</p>`;
-            });
-        }
-
-        function closePracticeModal() {
-            document.getElementById('practiceModal').classList.add('hidden');
-        }
-
-        function renderQuestions(questions) {
-            const container = document.getElementById('questionsList');
-            container.innerHTML = '';
-
-            questions.forEach((q, idx) => {
-                const qHtml = `
-                    <div class="bg-gray-900 p-4 rounded-xl border border-gray-700/80 space-y-3">
-                        <div class="flex justify-between items-center text-xs text-indigo-400 font-semibold">
-                            <span>Question ${idx + 1}</span>
-                            <span class="bg-indigo-950 px-2 py-0.5 rounded border border-indigo-800">${q.topic}</span>
-                        </div>
-                        <p class="text-sm font-medium text-gray-200">${q.question}</p>
-                        <div class="space-y-2">
-                            ${q.options.map(opt => `
-                                <button onclick="checkAnswer(this, '${opt.replace(/'/g, "\\'")}', '${q.correct_answer.replace(/'/g, "\\'")}', 'exp-${idx}')" 
-                                        class="w-full text-left text-xs bg-gray-800 hover:bg-gray-700/80 p-2.5 rounded-lg border border-gray-700 transition">
-                                    ${opt}
-                                </button>
-                            `).join('')}
-                        </div>
-                        <div id="exp-${idx}" class="hidden p-3 bg-indigo-950/50 border border-indigo-800 rounded-lg text-xs text-indigo-200 mt-2">
-                            <strong class="block mb-1 text-emerald-400">💡 Explanation:</strong> ${q.explanation}
-                        </div>
-                    </div>
-                `;
-                container.innerHTML += qHtml;
-            });
-        }
-
-        function checkAnswer(btn, selected, correct, expId) {
-            const parent = btn.parentElement;
-            const buttons = parent.querySelectorAll('button');
-            buttons.forEach(b => b.disabled = true);
-
-            if (selected.trim() === correct.trim()) {
-                btn.classList.add('bg-emerald-900/80', 'border-emerald-600', 'text-emerald-200');
-            } else {
-                btn.classList.add('bg-rose-900/80', 'border-rose-600', 'text-rose-200');
-            }
-
-            document.getElementById(expId).classList.remove('hidden');
-        }
-
-        document.addEventListener('DOMContentLoaded', function() {
-            fetch('/metrics')
-                .then(response => response.json())
-                .then(data => {
-                    if (Object.keys(data).length === 0) return;
-
-                    const labels = Object.keys(data);
-                    const accuracies = labels.map(key => (data[key].accuracy * 100).toFixed(1));
-                    const rocAucs = labels.map(key => (data[key].roc_auc * 100).toFixed(1));
-
-                    const tableBody = document.getElementById('metricsTableBody');
-                    tableBody.innerHTML = '';
-                    labels.forEach(model => {
-                        const row = `
-                            <tr class="border-b border-gray-800 hover:bg-gray-800/50">
-                                <td class="py-2 px-2 font-medium text-white">${model}</td>
-                                <td class="py-2 px-2 text-indigo-400 font-bold">${(data[model].accuracy * 100).toFixed(1)}%</td>
-                                <td class="py-2 px-2">${data[model].f1.toFixed(3)}</td>
-                                <td class="py-2 px-2 text-teal-400 font-bold">${(data[model].roc_auc * 100).toFixed(1)}%</td>
-                            </tr>
-                        `;
-                        tableBody.innerHTML += row;
-                    });
-
-                    const ctx = document.getElementById('metricsChart').getContext('2d');
-                    new Chart(ctx, {
-                        type: 'bar',
-                        data: {
-                            labels: labels,
-                            datasets: [
-                                {
-                                    label: 'Accuracy (%)',
-                                    data: accuracies,
-                                    backgroundColor: 'rgba(99, 102, 241, 0.8)',
-                                    borderColor: 'rgba(99, 102, 241, 1)',
-                                    borderWidth: 1,
-                                    borderRadius: 4
-                                },
-                                {
-                                    label: 'ROC-AUC (%)',
-                                    data: rocAucs,
-                                    backgroundColor: 'rgba(20, 184, 166, 0.8)',
-                                    borderColor: 'rgba(20, 184, 166, 1)',
-                                    borderWidth: 1,
-                                    borderRadius: 4
-                                }
-                            ]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            scales: {
-                                y: {
-                                    beginAtZero: false,
-                                    min: 70,
-                                    max: 100,
-                                    grid: { color: 'rgba(255, 255, 255, 0.05)' },
-                                    ticks: { color: '#9ca3af' }
-                                },
-                                x: {
-                                    grid: { display: false },
-                                    ticks: { color: '#9ca3af' }
-                                }
-                            },
-                            plugins: {
-                                legend: { labels: { color: '#e5e7eb' } }
-                            }
-                        }
-                    });
-                })
-                .catch(err => console.error('Error fetching metrics:', err));
-        });
     </script>
-
 </body>
 </html>
