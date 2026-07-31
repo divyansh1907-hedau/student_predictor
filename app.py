@@ -58,7 +58,7 @@ if os.path.exists('metrics.json'):
 
 
 # ==========================================
-# 2. DATABASE MODELS (RBAC & Users)
+# 2. DATABASE MODELS (RBAC, Multi-Subject Grades)
 # ==========================================
 
 class User(UserMixin, db.Model):
@@ -67,19 +67,30 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(200), nullable=False)
     role = db.Column(db.String(20), nullable=False)  # 'admin', 'faculty', 'student'
+    subject = db.Column(db.String(80), nullable=True, default='General')  # Subject assigned to Faculty
     
-    # Student specific metrics (managed by Faculty batch uploads)
-    attendance = db.Column(db.Float, default=75.0)
-    midterm = db.Column(db.Float, default=60.0)
-    assignment = db.Column(db.Float, default=60.0)
-    logins = db.Column(db.Float, default=12.0)
-    study_hours = db.Column(db.Float, default=5.0)
+    # Relationship to per-subject grades (for student role)
+    grades = db.relationship('StudentSubjectGrade', backref='student_user', lazy=True, cascade="all, delete-orphan")
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+
+
+class StudentSubjectGrade(db.Model):
+    """Stores attendance and marks per student per subject."""
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    subject = db.Column(db.String(80), nullable=False)
+    
+    attendance = db.Column(db.Float, default=75.0)
+    midterm = db.Column(db.Float, default=60.0)
+    assignment = db.Column(db.Float, default=60.0)
+    logins = db.Column(db.Float, default=12.0)
+    study_hours = db.Column(db.Float, default=5.0)
+
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -91,47 +102,55 @@ def load_user(user_id):
 # ==========================================
 
 def init_db():
-    """Creates tables and seeds default demo users if database is fresh (Crucial for Render/Gunicorn)."""
+    """Creates tables and seeds default multi-subject faculty accounts and student subject records."""
     db.create_all()
 
-    # Seed Admin User if not present
+    # Seed Admin
     if not User.query.filter_by(username='admin').first():
-        admin = User(
-            username='admin',
-            email='admin@university.edu',
-            role='admin'
-        )
+        admin = User(username='admin', email='admin@university.edu', role='admin', subject='Administration')
         admin.set_password('admin123')
         db.session.add(admin)
 
-    # Seed Faculty User if not present
-    if not User.query.filter_by(username='faculty').first():
-        faculty = User(
-            username='faculty',
-            email='faculty@university.edu',
-            role='faculty'
-        )
-        faculty.set_password('faculty123')
-        db.session.add(faculty)
+    # Seed Subject Faculties
+    subject_faculties = [
+        {'username': 'faculty_ds', 'email': 'ds_faculty@university.edu', 'subject': 'Data Structures & Algorithms'},
+        {'username': 'faculty_dbms', 'email': 'dbms_faculty@university.edu', 'subject': 'Database Management Systems'},
+        {'username': 'faculty_os', 'email': 'os_faculty@university.edu', 'subject': 'Operating Systems'},
+        {'username': 'faculty_ai', 'email': 'ai_faculty@university.edu', 'subject': 'Artificial Intelligence'}
+    ]
 
-    # Seed Default Student User if not present
-    if not User.query.filter_by(username='student1').first():
-        student = User(
-            username='student1',
-            email='student1@university.edu',
-            role='student',
-            attendance=65.0,
-            midterm=45.0,
-            assignment=50.0,
-            logins=12.0,
-            study_hours=4.0
-        )
+    for f_data in subject_faculties:
+        if not User.query.filter_by(username=f_data['username']).first():
+            f_user = User(
+                username=f_data['username'],
+                email=f_data['email'],
+                role='faculty',
+                subject=f_data['subject']
+            )
+            f_user.set_password('faculty123')
+            db.session.add(f_user)
+
+    # Seed Demo Student with records in 2 subjects
+    student = User.query.filter_by(username='student1').first()
+    if not student:
+        student = User(username='student1', email='student1@university.edu', role='student')
         student.set_password('student123')
         db.session.add(student)
+        db.session.flush()
+
+        # Add sample subject grades for student1
+        grade_ds = StudentSubjectGrade(
+            student_id=student.id, subject='Data Structures & Algorithms',
+            attendance=85.0, midterm=78.0, assignment=80.0, logins=15.0, study_hours=6.0
+        )
+        grade_dbms = StudentSubjectGrade(
+            student_id=student.id, subject='Database Management Systems',
+            attendance=48.0, midterm=38.0, assignment=42.0, logins=6.0, study_hours=2.0
+        )
+        db.session.add_all([grade_ds, grade_dbms])
 
     db.session.commit()
 
-# Ensure database is initialized during app launch
 with app.app_context():
     init_db()
 
@@ -244,34 +263,54 @@ def admin_dashboard():
 @app.route('/student_dashboard')
 @login_required
 def student_dashboard():
-    """Personalized Student Portal."""
+    """Personalized Student Portal with Per-Subject Breakdowns."""
     if current_user.role != 'student':
         return "Unauthorized Access", 403
     
-    # Calculate personal risk score using ML model
-    risk_percent = 25.0
-    at_risk = False
-    if model and scaler:
-        raw_features = np.array([[current_user.attendance, current_user.midterm, current_user.assignment, current_user.logins, current_user.study_hours]])
-        scaled_features = scaler.transform(raw_features)
-        prediction = model.predict(scaled_features)[0]
-        prob = model.predict_proba(scaled_features)[0][1] if hasattr(model, 'predict_proba') else float(prediction)
-        risk_percent = round(prob * 100, 2)
-        at_risk = bool(prediction == 1)
+    subject_cards = []
+    total_risk = 0.0
 
-    remediation_path = generate_personalized_path(current_user.midterm, current_user.assignment, current_user.attendance, current_user.study_hours)
+    for g in current_user.grades:
+        risk_val = 25.0
+        at_risk = False
+        if model and scaler:
+            raw_features = np.array([[g.attendance, g.midterm, g.assignment, g.logins, g.study_hours]])
+            scaled_features = scaler.transform(raw_features)
+            prediction = model.predict(scaled_features)[0]
+            prob = model.predict_proba(scaled_features)[0][1] if hasattr(model, 'predict_proba') else float(prediction)
+            risk_val = round(prob * 100, 2)
+            at_risk = bool(prediction == 1 or risk_val >= 50)
+
+        remediation = generate_personalized_path(g.midterm, g.assignment, g.attendance, g.study_hours)
+        total_risk += risk_val
+
+        subject_cards.append({
+            'subject': g.subject,
+            'attendance': g.attendance,
+            'midterm': g.midterm,
+            'assignment': g.assignment,
+            'study_hours': g.study_hours,
+            'risk_percent': risk_val,
+            'at_risk': at_risk,
+            'remediation': remediation
+        })
+
+    overall_risk = round(total_risk / len(subject_cards), 2) if subject_cards else 25.0
+    overall_at_risk = bool(overall_risk >= 50)
+    remediation_path = subject_cards[0]['remediation'] if subject_cards else generate_personalized_path(60, 60, 75, 5)
 
     return render_template(
         'student.html', 
         student=current_user, 
-        risk_percent=risk_percent, 
-        at_risk=at_risk, 
+        subject_cards=subject_cards,
+        risk_percent=overall_risk,
+        at_risk=overall_at_risk,
         remediation_path=remediation_path
     )
 
 
 # ==========================================
-# 5. CORE PREDICTION & OPTIMIZED CSV BATCH PROCESSING
+# 5. PER-SUBJECT CSV BATCH PROCESSING
 # ==========================================
 
 @app.route('/metrics', methods=['GET'])
@@ -282,7 +321,6 @@ def get_metrics():
 @app.route('/predict', methods=['GET', 'POST'])
 @login_required
 def predict():
-    """Endpoint for individual student risk assessment."""
     if request.method == 'GET':
         return redirect(url_for('home'))
 
@@ -297,13 +335,9 @@ def predict():
         scaled_features = scaler.transform(raw_features)
 
         prediction = model.predict(scaled_features)[0]
-        probability = (
-            model.predict_proba(scaled_features)[0][1]
-            if hasattr(model, 'predict_proba')
-            else float(prediction)
-        )
+        prob = model.predict_proba(scaled_features)[0][1] if hasattr(model, 'predict_proba') else float(prediction)
 
-        risk_percent = round(probability * 100, 2)
+        risk_percent = round(prob * 100, 2)
         at_risk = bool(prediction == 1)
 
         remediation_path = generate_personalized_path(midterm, assignment, attendance, study_hours)
@@ -326,7 +360,7 @@ def predict():
 @app.route('/upload_batch', methods=['POST'])
 @login_required
 def upload_batch():
-    """Optimized class-wide batch CSV processing & automatic student account creation."""
+    """Batch CSV processing updating subject-specific student records."""
     global last_batch_results
     try:
         file = request.files.get('file')
@@ -342,7 +376,7 @@ def upload_batch():
             if col not in df.columns:
                 return render_template('index.html', user=current_user, batch_error=f'Missing column: {col}')
 
-        # 1. Fast Vectorized ML Prediction
+        # 1. ML Batch Prediction
         X = df[required_cols]
         X_scaled = scaler.transform(X)
 
@@ -353,7 +387,7 @@ def upload_batch():
             else predictions
         )
 
-        # 2. Optimized Database Operations (Single query lookup + pre-hashed password)
+        faculty_subject = getattr(current_user, 'subject', 'General')
         existing_users = {u.username: u for u in User.query.all()}
         default_password_hash = generate_password_hash('student123')
 
@@ -367,33 +401,47 @@ def upload_batch():
             student_email = row.get('email', f'{student_username}@university.edu')
             student_id = row.get('id', f'STU-{idx+1000}')
 
-            # Fast in-memory dictionary lookup
+            # Find or Create Student User
             if student_username in existing_users:
-                existing_student = existing_users[student_username]
-                existing_student.attendance = float(row['attendance'])
-                existing_student.midterm = float(row['midterm'])
-                existing_student.assignment = float(row['assignment'])
-                existing_student.logins = float(row['logins'])
-                existing_student.study_hours = float(row['study_hours'])
+                student_user = existing_users[student_username]
             else:
-                new_student = User(
+                student_user = User(
                     username=student_username,
                     email=student_email,
                     role='student',
-                    password_hash=default_password_hash,
+                    password_hash=default_password_hash
+                )
+                new_users_to_add.append(student_user)
+                existing_users[student_username] = student_user
+
+            # Update or Create Subject Grade Entry for this Faculty's Subject
+            grade_entry = StudentSubjectGrade.query.filter_by(
+                student_id=student_user.id, subject=faculty_subject
+            ).first() if student_user.id else None
+
+            if not grade_entry:
+                grade_entry = StudentSubjectGrade(
+                    student_user=student_user,
+                    subject=faculty_subject,
                     attendance=float(row['attendance']),
                     midterm=float(row['midterm']),
                     assignment=float(row['assignment']),
                     logins=float(row['logins']),
                     study_hours=float(row['study_hours'])
                 )
-                new_users_to_add.append(new_student)
-                existing_users[student_username] = new_student
+                db.session.add(grade_entry)
+            else:
+                grade_entry.attendance = float(row['attendance'])
+                grade_entry.midterm = float(row['midterm'])
+                grade_entry.assignment = float(row['assignment'])
+                grade_entry.logins = float(row['logins'])
+                grade_entry.study_hours = float(row['study_hours'])
 
             batch_results.append({
                 'id': student_id,
                 'name': raw_name,
                 'email': student_email,
+                'subject': faculty_subject,
                 'attendance': row['attendance'],
                 'midterm': row['midterm'],
                 'assignment': row['assignment'],
@@ -403,7 +451,6 @@ def upload_batch():
                 'at_risk': bool(predictions[idx] == 1 or risk_val >= 50)
             })
 
-        # Bulk save all created students
         if new_users_to_add:
             db.session.add_all(new_users_to_add)
         db.session.commit()
@@ -411,7 +458,7 @@ def upload_batch():
         last_batch_results = batch_results
         at_risk_count = sum(1 for s in batch_results if s['at_risk'])
 
-        flash(f'Class CSV processed! Registered/Updated {len(batch_results)} students ({len(new_users_to_add)} new logins created with pass "student123").', 'success')
+        flash(f'Batch CSV processed for [{faculty_subject}]! Updated {len(batch_results)} student records ({len(new_users_to_add)} new logins created).', 'success')
 
         return render_template(
             'index.html',
@@ -424,10 +471,13 @@ def upload_batch():
         return render_template('index.html', user=current_user, batch_error=f'Error processing CSV: {str(e)}')
 
 
+# ==========================================
+# 6. OTHER ROUTES (Mail, AI Practice, PDF Reports)
+# ==========================================
+
 @app.route('/send_intervention', methods=['POST'])
 @login_required
 def send_intervention():
-    """Sends an automated intervention email alert to an at-risk student."""
     try:
         data = request.json or {}
         student_id = data.get('student_id')
@@ -444,38 +494,32 @@ def send_intervention():
 
         email_body = f"""Dear {student['name']},
 
-This is an automated academic advisory alert from the EduPredict AI platform.
+This is an automated academic advisory alert from the EduPredict AI platform regarding [{student.get('subject', 'Course')}].
 
-Our predictive analysis indicates that your current academic standing requires attention:
+Performance Metrics:
+- Subject: {student.get('subject', 'General')}
 - Calculated Failure Risk Score: {student['risk_percent']}%
 - Attendance: {student['attendance']}%
 - Midterm Score: {student['midterm']}%
-- Assignment Score: {student['assignment']}%
 
 Recommended 4-Week Remediation Roadmap:
 {remediation_text}
 
-Please log into your EduPredict Student Portal (Username: {student['name'].replace(' ', '_').lower()}) to complete your tailored AI practice modules.
+Please log into your EduPredict Student Portal to complete your subject-specific AI practice modules.
 
 Best regards,
 EduPredict Academic Support Team
 """
 
-        print("\n" + "=" * 50)
-        print(f"OUTGOING INTERVENTION ALERT TO: {student['email']}")
-        print("=" * 50)
-        print(email_body)
-        print("=" * 50 + "\n")
-
         try:
             msg = Message(
-                subject=f"⚠️ Academic Intervention Notice: {student['name']} ({student['id']})",
+                subject=f"⚠️ Academic Intervention Notice ({student.get('subject', 'Course')}): {student['name']}",
                 recipients=[student['email']],
                 body=email_body
             )
             mail.send(msg)
             status_msg = f"Intervention email successfully sent to {student['email']}!"
-        except Exception as smtp_err:
+        except Exception:
             status_msg = f"Intervention alert logged for {student['name']} ({student['email']})!"
 
         return jsonify({'success': True, 'message': status_msg})
@@ -487,7 +531,6 @@ EduPredict Academic Support Team
 @app.route('/generate_practice', methods=['POST'])
 @login_required
 def generate_practice():
-    """Dynamically generates 3 practice problems using Gemini AI with an offline backup set."""
     try:
         data = request.json or {}
         midterm = float(data.get('midterm', 50))
@@ -583,7 +626,6 @@ Do not wrap response in markdown blocks like ```json. Return raw JSON text only.
 @app.route('/export_report', methods=['GET'])
 @login_required
 def export_report():
-    """Generates an At-Risk PDF summary report using ReportLab."""
     global last_batch_results
     if not last_batch_results:
         return 'No batch prediction data available to export.', 400
@@ -596,22 +638,23 @@ def export_report():
     title_style = ParagraphStyle('TitleStyle', parent=styles['Heading1'], fontSize=20, textColor=colors.HexColor('#1e1b4b'), spaceAfter=10)
     subtitle_style = ParagraphStyle('SubStyle', parent=styles['Normal'], fontSize=10, textColor=colors.HexColor('#475569'), spaceAfter=20)
 
-    elements.append(Paragraph('🎓 EduPredict AI - Academic At-Risk Report', title_style))
+    faculty_subject = getattr(current_user, 'subject', 'General')
+    elements.append(Paragraph(f'🎓 EduPredict AI - Academic At-Risk Report ({faculty_subject})', title_style))
     at_risk_list = [s for s in last_batch_results if s['at_risk']]
     elements.append(Paragraph(f'Generated Batch Summary • Total Students Analyzed: {len(last_batch_results)} | Flagged At-Risk: {len(at_risk_list)}', subtitle_style))
 
-    table_data = [['Student ID', 'Name', 'Attendance %', 'Midterm %', 'Assignment %', 'Risk Score']]
+    table_data = [['Student ID', 'Name', 'Subject', 'Attendance %', 'Midterm %', 'Risk Score']]
     for s in last_batch_results:
         table_data.append([
             str(s['id']),
             str(s['name']),
+            str(s.get('subject', faculty_subject)),
             f"{s['attendance']}%",
             f"{s['midterm']}%",
-            f"{s['assignment']}%",
             f"{s['risk_percent']}%" + (" ⚠️" if s['at_risk'] else " ✅")
         ])
 
-    t = Table(table_data, colWidths=[80, 140, 80, 80, 80, 80])
+    t = Table(table_data, colWidths=[70, 120, 110, 70, 70, 70])
     t.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4f46e5')),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
@@ -619,7 +662,7 @@ def export_report():
         ('FONTSIZE', (0, 0), (-1, 0), 10),
         ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
         ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e2e8f0')),
-        ('ALIGN', (2, 0), (-1, -1), 'CENTER'),
+        ('ALIGN', (3, 0), (-1, -1), 'CENTER'),
         ('FONTSIZE', (0, 1), (-1, -1), 9),
         ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8fafc')])
     ]))
@@ -628,7 +671,7 @@ def export_report():
     doc.build(elements)
     buffer.seek(0)
 
-    return send_file(buffer, as_attachment=True, download_name='EduPredict_AtRisk_Report.pdf', mimetype='application/pdf')
+    return send_file(buffer, as_attachment=True, download_name=f'EduPredict_{faculty_subject.replace(" ", "_")}_Report.pdf', mimetype='application/pdf')
 
 
 if __name__ == '__main__':
