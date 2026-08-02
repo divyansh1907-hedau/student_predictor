@@ -3,20 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EduPredict AI - Faculty & Advisor Portal</title>
+    <title>Faculty Portal - EduPredict AI</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-        }
-    </script>
+    <script>tailwind.config = { darkMode: 'class' }</script>
 </head>
 <body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-100 min-h-screen font-sans p-6 transition-colors duration-300">
 
     <div class="max-w-7xl mx-auto space-y-6">
 
-        <!-- Top Header Navigation -->
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl gap-4 transition-colors">
+        <!-- Header -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl gap-4">
             <div>
                 <h1 class="text-2xl font-bold text-indigo-600 dark:text-indigo-400">🎓 EduPredict AI — Faculty Portal</h1>
                 <p class="text-xs text-gray-500 dark:text-gray-400">
@@ -26,18 +22,14 @@
             </div>
 
             <div class="flex items-center gap-3">
-                <!-- Theme Toggle Button -->
-                <button onclick="toggleTheme()" class="p-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-xs font-semibold text-gray-700 dark:text-gray-200 transition">
+                <button onclick="toggleTheme()" class="p-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-700 text-xs font-semibold">
                     <span id="themeIcon">☀️ Light Mode</span>
                 </button>
-
-                <a href="/logout" class="bg-red-600/90 hover:bg-red-500 text-white text-xs px-4 py-2.5 rounded-xl transition font-semibold shadow-md">
-                    Log Out
-                </a>
+                <a href="/logout" class="bg-red-600/90 hover:bg-red-500 text-white text-xs px-4 py-2.5 rounded-xl transition font-semibold shadow-md">Log Out</a>
             </div>
         </div>
 
-        <!-- Flash Alert Messages -->
+        <!-- Flash Messages -->
         {% with messages = get_flashed_messages(with_categories=true) %}
           {% if messages %}
             {% for category, message in messages %}
@@ -48,87 +40,65 @@
           {% endif %}
         {% endwith %}
 
-        <!-- Grid Section: Individual Predictor & Batch CSV Upload -->
+        <!-- Grid Cards -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-            <!-- 1. Single Student Failure Risk Predictor -->
-            <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-xl space-y-4 transition-colors">
+            <!-- Video Upload -->
+            <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-xl space-y-4">
                 <h2 class="text-lg font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                    🎯 Single Student Risk Analysis
+                    🎥 Upload Lecture Video & Auto-Generate AI Quiz
                 </h2>
-                <p class="text-xs text-gray-500 dark:text-gray-400">Evaluate student failure risk instantly using scaled parameters.</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">
+                    Upload your MP4 video for <span class="font-bold text-indigo-600 dark:text-indigo-400">[{{ user.subject or 'General' }}]</span>. Gemini AI will scan the video and create a 10-question quiz!
+                </p>
 
-                <form action="/predict" method="POST" class="space-y-3 text-xs">
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="block font-semibold mb-1 text-gray-700 dark:text-gray-300">Attendance (%)</label>
-                            <input type="number" step="0.1" name="attendance" value="{{ attendance or 75 }}" required class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl p-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-indigo-500">
-                        </div>
-                        <div>
-                            <label class="block font-semibold mb-1 text-gray-700 dark:text-gray-300">Midterm Marks (%)</label>
-                            <input type="number" step="0.1" name="midterm" value="{{ midterm or 60 }}" required class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl p-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-indigo-500">
-                        </div>
-                        <div>
-                            <label class="block font-semibold mb-1 text-gray-700 dark:text-gray-300">Assignment (%)</label>
-                            <input type="number" step="0.1" name="assignment" value="{{ assignment or 60 }}" required class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl p-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-indigo-500">
-                        </div>
-                        <div>
-                            <label class="block font-semibold mb-1 text-gray-700 dark:text-gray-300">Portal Logins/Wk</label>
-                            <input type="number" step="0.1" name="logins" value="{{ logins or 12 }}" required class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl p-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-indigo-500">
-                        </div>
-                    </div>
+                <form action="/upload_teacher_video" method="POST" enctype="multipart/form-data" class="space-y-3 text-xs">
+                    <input type="hidden" name="subject" value="{{ user.subject or 'General' }}">
+                    
                     <div>
-                        <label class="block font-semibold mb-1 text-gray-700 dark:text-gray-300">Weekly Study Hours</label>
-                        <input type="number" step="0.1" name="study_hours" value="{{ study_hours or 5 }}" required class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl p-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-indigo-500">
+                        <label class="block font-semibold mb-1 text-gray-700 dark:text-gray-300">Topic Title</label>
+                        <input type="text" name="topic_title" placeholder="e.g. Memory Allocation in C" required class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl p-2.5 text-gray-900 dark:text-white">
                     </div>
+
+                    <div>
+                        <label class="block font-semibold mb-1 text-gray-700 dark:text-gray-300">Brief Description</label>
+                        <input type="text" name="description" placeholder="e.g. Overview of stack vs heap allocation." class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl p-2.5 text-gray-900 dark:text-white">
+                    </div>
+
+                    <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-4 text-center bg-gray-50 dark:bg-gray-900/50">
+                        <input type="file" name="video_file" accept="video/mp4,video/webm" required class="block w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:bg-indigo-600 file:text-white font-semibold cursor-pointer">
+                    </div>
+
                     <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl transition shadow-lg shadow-indigo-600/30">
-                        Calculate Individual Risk Score
+                        ✨ Upload Video & Auto-Generate 10-Q Test
                     </button>
                 </form>
-
-                {% if prediction_text %}
-                <div class="p-4 rounded-xl border mt-4 {% if at_risk %}bg-red-50 dark:bg-red-950 border-red-300 dark:border-red-800 text-red-700 dark:text-red-300{% else %}bg-emerald-50 dark:bg-emerald-950 border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300{% endif %}">
-                    <h3 class="font-extrabold text-sm">{{ prediction_text }}</h3>
-                    <p class="text-xs mt-1">Status: {% if at_risk %}⚠️ Flagged At-Risk{% else %}✅ Performing Well{% endif %}</p>
-                </div>
-                {% endif %}
             </div>
 
-            <!-- 2. Class-Wide Batch CSV Upload -->
-            <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-xl space-y-4 flex flex-col justify-between transition-colors">
+            <!-- Batch CSV Upload -->
+            <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-xl space-y-4 flex flex-col justify-between">
                 <div>
                     <h2 class="text-lg font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                        📁 Class-Wide Batch CSV Analysis
+                        📁 Batch CSV Student Processing
                     </h2>
-                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        Upload a spreadsheet to generate risk predictions & auto-register accounts for <span class="font-semibold text-indigo-600 dark:text-indigo-400">[{{ user.subject or 'General' }}]</span>.
-                    </p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Upload a CSV file to evaluate student risk scores for <span class="font-semibold text-indigo-600 dark:text-indigo-400">[{{ user.subject or 'General' }}]</span>.</p>
 
                     <form action="/upload_batch" method="POST" enctype="multipart/form-data" class="mt-6 space-y-4">
-                        <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-indigo-500 dark:hover:border-indigo-400 rounded-2xl p-6 text-center bg-gray-50 dark:bg-gray-900/50 transition">
-                            <input type="file" name="file" accept=".csv" required class="block w-full text-xs text-gray-500 dark:text-gray-400 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 cursor-pointer">
-                            <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-2">Upload `.csv` files containing attendance, midterm, assignment, logins, study_hours.</p>
+                        <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-2xl p-6 text-center bg-gray-50 dark:bg-gray-900/50">
+                            <input type="file" name="file" accept=".csv" required class="block w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:bg-emerald-600 file:text-white font-semibold cursor-pointer">
                         </div>
-
-                        <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition shadow-lg shadow-emerald-600/30 text-xs">
-                            Process Class CSV
-                        </button>
+                        <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition text-xs">Process Class CSV</button>
                     </form>
                 </div>
-
-                {% if batch_error %}
-                <div class="p-3 bg-red-50 dark:bg-red-950 border border-red-300 dark:border-red-800 text-red-700 dark:text-red-300 rounded-xl text-xs font-semibold">
-                    {{ batch_error }}
-                </div>
-                {% endif %}
             </div>
 
         </div>
 
-        <!-- Batch Upload Results Table & Export Tools -->
+        <!-- BATCH CSV RESULTS TABLE WITH DOWNLOAD PDF & SEND ALERTS BUTTONS -->
         {% if batch_results %}
         <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-xl space-y-4 transition-colors">
-            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-gray-200 dark:border-gray-700 pb-4">
+            
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-gray-200 dark:border-gray-700 pb-4 gap-4">
                 <div>
                     <h2 class="text-base font-bold text-gray-900 dark:text-gray-100">
                         Class Batch Results — {{ user.subject or 'General' }}
@@ -136,12 +106,17 @@
                     <p class="text-xs text-gray-500 dark:text-gray-400">Total Analyzed: <span class="font-bold text-gray-800 dark:text-white">{{ total_students }}</span> | Flagged At-Risk: <span class="font-bold text-red-500 dark:text-red-400">{{ at_risk_count }}</span></p>
                 </div>
 
-                <a href="/export_report" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs px-4 py-2.5 rounded-xl transition shadow-md">
-                    📥 Download PDF Summary Report
-                </a>
+                <!-- ACTION BUTTONS: PDF REPORT & EMAIL ALERTS -->
+                <div class="flex items-center gap-3">
+                    <a href="/download_report" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition shadow-md flex items-center gap-2">
+                        📄 Download PDF Report
+                    </a>
+                    <a href="/send_alerts" class="bg-red-600 hover:bg-red-500 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition shadow-md flex items-center gap-2">
+                        📧 Send Email Alerts ({{ at_risk_count }})
+                    </a>
+                </div>
             </div>
 
-            <!-- Table Container -->
             <div class="overflow-x-auto">
                 <table class="w-full text-left text-xs text-gray-700 dark:text-gray-300">
                     <thead class="bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-400 uppercase text-[10px] tracking-wider">
@@ -152,7 +127,7 @@
                             <th class="p-3">Midterm</th>
                             <th class="p-3">Assignment</th>
                             <th class="p-3">Failure Risk</th>
-                            <th class="p-3 text-right rounded-r-xl">Action</th>
+                            <th class="p-3 text-right rounded-r-xl">Status</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-200 dark:divide-gray-700/60 font-mono">
@@ -166,13 +141,11 @@
                             <td class="p-3 font-bold {% if s.at_risk %}text-red-500 dark:text-red-400{% else %}text-emerald-600 dark:text-emerald-400{% endif %}">
                                 {{ s.risk_percent }}%
                             </td>
-                            <td class="p-3 text-right">
+                            <td class="p-3 text-right font-sans">
                                 {% if s.at_risk %}
-                                    <button onclick="sendIntervention('{{ s.id }}')" class="bg-red-600/90 hover:bg-red-500 text-white text-[10px] font-sans font-semibold px-3 py-1.5 rounded-lg transition shadow-sm">
-                                        📩 Send Alert
-                                    </button>
+                                    <span class="bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 text-[10px] font-semibold px-2.5 py-1 rounded-full border border-red-300 dark:border-red-800">⚠️ At Risk</span>
                                 {% else %}
-                                    <span class="text-[10px] font-sans text-emerald-600 dark:text-emerald-400 font-semibold">On Track</span>
+                                    <span class="bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 text-[10px] font-semibold px-2.5 py-1 rounded-full border border-emerald-300 dark:border-emerald-800">✅ On Track</span>
                                 {% endif %}
                             </td>
                         </tr>
@@ -185,7 +158,6 @@
 
     </div>
 
-    <!-- Theme Logic JavaScript -->
     <script>
         function applyTheme(theme) {
             const html = document.documentElement;
@@ -200,27 +172,13 @@
                 localStorage.setItem('theme', 'light');
             }
         }
-
         function toggleTheme() {
             const currentTheme = localStorage.getItem('theme') || 'dark';
             applyTheme(currentTheme === 'dark' ? 'light' : 'dark');
         }
-
         document.addEventListener('DOMContentLoaded', () => {
-            const savedTheme = localStorage.getItem('theme') || 'dark';
-            applyTheme(savedTheme);
+            applyTheme(localStorage.getItem('theme') || 'dark');
         });
-
-        function sendIntervention(studentId) {
-            fetch('/send_intervention', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ student_id: studentId })
-            })
-            .then(res => res.json())
-            .then(data => alert(data.message))
-            .catch(() => alert('Failed to dispatch alert.'));
-        }
     </script>
 </body>
 </html>

@@ -5,37 +5,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Student Academic Portal - EduPredict AI</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-        }
-    </script>
+    <script>tailwind.config = { darkMode: 'class' }</script>
 </head>
 <body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-100 min-h-screen font-sans p-6 transition-colors duration-300">
 
-    <div class="max-w-6xl mx-auto space-y-6">
+    <div class="max-w-7xl mx-auto space-y-6">
         
-        <!-- Header Navigation -->
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl gap-4 transition-colors">
+        <!-- Navigation -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl gap-4">
             <div>
                 <h1 class="text-2xl font-bold text-indigo-600 dark:text-indigo-400">🎓 Student Academic Portal</h1>
                 <p class="text-xs text-gray-500 dark:text-gray-400">Welcome back, <span class="text-gray-900 dark:text-white font-semibold">{{ student.username }}</span> ({{ student.email }})</p>
             </div>
             
             <div class="flex items-center gap-3">
-                <!-- Theme Toggle Button -->
-                <button onclick="toggleTheme()" class="p-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-xs font-semibold text-gray-700 dark:text-gray-200 transition">
+                <button onclick="toggleTheme()" class="p-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-700 text-xs font-semibold">
                     <span id="themeIcon">☀️ Light Mode</span>
                 </button>
-                
-                <a href="/logout" class="bg-red-600/90 hover:bg-red-500 text-white text-xs px-4 py-2.5 rounded-xl transition font-semibold shadow-md">
-                    Log Out
-                </a>
+                <a href="/logout" class="bg-red-600/90 hover:bg-red-500 text-white text-xs px-4 py-2.5 rounded-xl transition font-semibold shadow-md">Log Out</a>
             </div>
         </div>
 
-        <!-- Aggregate Risk Summary Banner -->
-        <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-6 rounded-2xl shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 transition-colors">
+        <!-- Aggregate Risk -->
+        <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-6 rounded-2xl shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div>
                 <h2 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Overall Aggregate Failure Risk</h2>
                 <div class="text-3xl font-extrabold mt-1 {% if at_risk %}text-red-500 dark:text-red-400{% else %}text-emerald-600 dark:text-emerald-400{% endif %}">
@@ -47,57 +39,85 @@
                     {% endif %}
                 </div>
             </div>
-            <button onclick="openPracticeModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs px-5 py-3 rounded-xl transition shadow-lg shadow-indigo-600/30">
-                ✨ Generate AI Practice Quiz
-            </button>
         </div>
 
-        <!-- Per-Subject Cards Section -->
-        <div class="space-y-4">
-            <h2 class="text-lg font-bold text-gray-800 dark:text-gray-200">Course Breakdown & Subject Metrics</h2>
+        <!-- Subject Cards & Multi-Video Playlists -->
+        <div class="space-y-6">
+            <h2 class="text-lg font-bold text-gray-800 dark:text-gray-200">Course Breakdown & Faculty Playlists</h2>
             
             {% if subject_cards %}
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {% for card in subject_cards %}
-                    <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-xl space-y-4 flex flex-col justify-between transition-colors">
+                    <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-xl space-y-5 flex flex-col justify-between">
                         <div>
-                            <!-- Card Header -->
-                            <div class="flex justify-between items-start border-b border-gray-200 dark:border-gray-700/80 pb-3 mb-4">
-                                <h3 class="font-bold text-indigo-600 dark:text-indigo-300 text-base">{{ card.subject }}</h3>
-                                <span class="text-xs font-bold px-2.5 py-1 rounded-full {% if card.at_risk %}bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 border border-red-300 dark:border-red-800{% else %}bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800{% endif %}">
+                            <!-- Header -->
+                            <div class="flex justify-between items-start border-b border-gray-200 dark:border-gray-700 pb-3 mb-4">
+                                <h3 class="font-bold text-indigo-600 dark:text-indigo-300 text-lg">{{ card.subject }}</h3>
+                                <span class="text-xs font-bold px-3 py-1 rounded-full {% if card.at_risk %}bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 border border-red-300 dark:border-red-800{% else %}bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800{% endif %}">
                                     Risk: {{ card.risk_percent }}%
                                 </span>
                             </div>
 
-                            <!-- Subject Performance Metrics -->
-                            <div class="grid grid-cols-4 gap-2 text-center text-xs mb-4">
-                                <div class="bg-gray-50 dark:bg-gray-900 p-2.5 rounded-xl border border-gray-200 dark:border-gray-700/50">
+                            <!-- Metrics -->
+                            <div class="grid grid-cols-4 gap-2 text-center text-xs mb-5">
+                                <div class="bg-gray-50 dark:bg-gray-900 p-2.5 rounded-xl border border-gray-200 dark:border-gray-700">
                                     <span class="block text-gray-500 dark:text-gray-400 text-[10px]">Attendance</span>
                                     <span class="font-bold text-gray-800 dark:text-white text-sm">{{ card.attendance }}%</span>
                                 </div>
-                                <div class="bg-gray-50 dark:bg-gray-900 p-2.5 rounded-xl border border-gray-200 dark:border-gray-700/50">
+                                <div class="bg-gray-50 dark:bg-gray-900 p-2.5 rounded-xl border border-gray-200 dark:border-gray-700">
                                     <span class="block text-gray-500 dark:text-gray-400 text-[10px]">Midterm</span>
                                     <span class="font-bold text-gray-800 dark:text-white text-sm">{{ card.midterm }}%</span>
                                 </div>
-                                <div class="bg-gray-50 dark:bg-gray-900 p-2.5 rounded-xl border border-gray-200 dark:border-gray-700/50">
-                                    <span class="block text-gray-500 dark:text-gray-400 text-[10px]">Assignment</span>
+                                <div class="bg-gray-50 dark:bg-gray-900 p-2.5 rounded-xl border border-gray-200 dark:border-gray-700">
+                                    <span class="block text-gray-400 text-[10px]">Assignment</span>
                                     <span class="font-bold text-gray-800 dark:text-white text-sm">{{ card.assignment }}%</span>
                                 </div>
-                                <div class="bg-gray-50 dark:bg-gray-900 p-2.5 rounded-xl border border-gray-200 dark:border-gray-700/50">
-                                    <span class="block text-gray-500 dark:text-gray-400 text-[10px]">Study Hrs/Wk</span>
+                                <div class="bg-gray-50 dark:bg-gray-900 p-2.5 rounded-xl border border-gray-200 dark:border-gray-700">
+                                    <span class="block text-gray-400 text-[10px]">Study Hrs</span>
                                     <span class="font-bold text-gray-800 dark:text-white text-sm">{{ card.study_hours }}h</span>
                                 </div>
                             </div>
 
-                            <!-- AI Remediation Roadmap -->
-                            <div class="space-y-2">
-                                <span class="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Targeted Remediation Plan</span>
-                                {% for step in card.remediation %}
-                                    <div class="text-xs bg-gray-50 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-700/60 p-2.5 rounded-xl text-gray-700 dark:text-gray-300">
-                                        <span class="font-bold text-indigo-600 dark:text-indigo-400">{{ step.phase }}:</span> {{ step.recommendation }}
+                            <!-- Multi-Video Playlist -->
+                            <div class="space-y-4 border-t border-gray-200 dark:border-gray-700/80 pt-4">
+                                <div class="flex justify-between items-center">
+                                    <h4 class="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
+                                        📹 Course Video Playlist ({{ card.pathway_topics|length }} Modules)
+                                    </h4>
+                                </div>
+
+                                {% if card.pathway_topics %}
+                                    <div class="space-y-4 max-h-[550px] overflow-y-auto pr-1">
+                                        {% for topic in card.pathway_topics %}
+                                        <div class="bg-gray-50 dark:bg-gray-900/90 border border-gray-200 dark:border-gray-700 p-4 rounded-xl space-y-3">
+                                            <div class="flex justify-between items-start">
+                                                <div>
+                                                    <h5 class="text-xs font-bold text-gray-900 dark:text-white">{{ topic.title }}</h5>
+                                                    <p class="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{{ topic.description }}</p>
+                                                </div>
+                                                <span class="bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold px-2 py-0.5 rounded-md border border-indigo-300 dark:border-indigo-800 shrink-0">
+                                                    Module {{ topic.sequence }}
+                                                </span>
+                                            </div>
+
+                                            <div class="aspect-video w-full rounded-xl overflow-hidden border border-gray-300 dark:border-gray-700 shadow-inner bg-black">
+                                                <video class="w-full h-full object-cover" controls preload="metadata">
+                                                    <source src="{{ topic.youtube_url }}" type="video/mp4">
+                                                    Your browser does not support HTML5 video playback.
+                                                </video>
+                                            </div>
+
+                                            <button onclick="openTopicQuiz('{{ card.subject }}', '{{ topic.title }}')" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs py-2 rounded-lg transition shadow-md flex items-center justify-center gap-2">
+                                                📝 Take Module {{ topic.sequence }} Interactive Test
+                                            </button>
+                                        </div>
+                                        {% endfor %}
                                     </div>
-                                {% endfor %}
+                                {% else %}
+                                    <p class="text-xs text-gray-400 italic">No faculty lecture videos uploaded for this subject yet.</p>
+                                {% endif %}
                             </div>
+
                         </div>
                     </div>
                     {% endfor %}
@@ -111,90 +131,155 @@
 
     </div>
 
-    <!-- Gemini AI Practice Modal -->
-    <div id="quizModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
-        <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl max-w-xl w-full p-6 space-y-4 shadow-2xl">
+    <!-- INTERACTIVE 10-QUESTION QUIZ MODAL -->
+    <div id="quizModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+        <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl max-w-2xl w-full p-6 space-y-4 shadow-2xl max-h-[85vh] overflow-y-auto">
             <div class="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-3">
-                <h3 class="font-bold text-indigo-600 dark:text-indigo-400 text-base">✨ AI-Generated Skill Practice</h3>
-                <button onclick="closePracticeModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-white text-sm font-bold">✕</button>
+                <div>
+                    <h3 id="quizTitle" class="font-bold text-indigo-600 dark:text-indigo-400 text-base">📝 Interactive Topic Test (10 Questions)</h3>
+                    <p id="quizSubtitle" class="text-xs text-gray-500 dark:text-gray-400"></p>
+                </div>
+                <button onclick="closeQuizModal()" class="text-gray-400 hover:text-white text-sm font-bold">✕</button>
+            </div>
+
+            <!-- Score Summary Banner -->
+            <div id="scoreBanner" class="hidden p-4 bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200 dark:border-indigo-800 rounded-xl text-center space-y-1">
+                <h4 class="text-sm font-bold text-indigo-600 dark:text-indigo-300">🎉 Quiz Completed!</h4>
+                <p class="text-xs text-gray-700 dark:text-gray-300">You scored <span id="finalScore" class="font-bold text-emerald-500">0</span> out of 10</p>
             </div>
             
-            <div id="quizContent" class="space-y-3 text-xs text-gray-700 dark:text-gray-300 min-h-[180px] flex items-center justify-center">
-                <div class="text-center space-y-2">
+            <div id="quizContent" class="space-y-4 text-xs text-gray-700 dark:text-gray-300 min-h-[200px]">
+                <div class="text-center py-10 space-y-2">
                     <div class="animate-spin inline-block w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full"></div>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">Generating customized questions using Gemini AI...</p>
+                    <p class="text-xs text-gray-400">Loading interactive questions...</p>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // --- Theme Toggle Logic ---
+        let currentQuestions = [];
+        let userScore = 0;
+        let answeredCount = 0;
+
         function applyTheme(theme) {
             const html = document.documentElement;
             const icon = document.getElementById('themeIcon');
             if (theme === 'dark') {
                 html.classList.add('dark');
-                icon.innerHTML = '🌙 Dark Mode';
+                if(icon) icon.innerHTML = '🌙 Dark Mode';
                 localStorage.setItem('theme', 'dark');
             } else {
                 html.classList.remove('dark');
-                icon.innerHTML = '☀️ Light Mode';
+                if(icon) icon.innerHTML = '☀️ Light Mode';
                 localStorage.setItem('theme', 'light');
             }
         }
-
         function toggleTheme() {
             const currentTheme = localStorage.getItem('theme') || 'dark';
             applyTheme(currentTheme === 'dark' ? 'light' : 'dark');
         }
-
-        // Initialize Theme from localStorage
         document.addEventListener('DOMContentLoaded', () => {
-            const savedTheme = localStorage.getItem('theme') || 'dark';
-            applyTheme(savedTheme);
+            applyTheme(localStorage.getItem('theme') || 'dark');
         });
 
-        // --- Practice Quiz Modal Logic ---
-        function openPracticeModal() {
+        function openTopicQuiz(subject, topicTitle) {
             const modal = document.getElementById('quizModal');
+            document.getElementById('quizSubtitle').innerText = `${subject} • ${topicTitle}`;
+            document.getElementById('scoreBanner').classList.add('hidden');
+            userScore = 0;
+            answeredCount = 0;
+
             modal.classList.remove('hidden');
             modal.classList.add('flex');
             
-            fetch('/generate_practice', {
+            fetch('/generate_topic_quiz', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ midterm: 50, assignment: 50, study_hours: 5 })
+                body: JSON.stringify({ subject: subject, topic_title: topicTitle })
             })
             .then(res => res.json())
             .then(data => {
                 if (data.questions && data.questions.length > 0) {
-                    let html = '';
-                    data.questions.forEach((q, i) => {
-                        html += `
-                            <div class="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700/80 p-3.5 rounded-xl space-y-2">
-                                <p class="font-bold text-indigo-600 dark:text-indigo-300">${i+1}. ${q.question}</p>
-                                <div class="grid grid-cols-2 gap-2 font-mono text-[11px]">
-                                    ${q.options.map(opt => `<div class="bg-white dark:bg-gray-800 p-2 rounded-lg border border-gray-200 dark:border-gray-700/60">${opt}</div>`).join('')}
-                                </div>
-                                <div class="text-[11px] bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/60 p-2 rounded-lg text-emerald-700 dark:text-emerald-300 mt-1">
-                                    <span class="font-bold">Correct Answer:</span> ${q.correct_answer}<br>
-                                    <span class="text-[10px] text-gray-500 dark:text-gray-400">${q.explanation || ''}</span>
-                                </div>
-                            </div>
-                        `;
-                    });
-                    document.getElementById('quizContent').innerHTML = `<div class="space-y-3 w-full">${html}</div>`;
+                    currentQuestions = data.questions;
+                    renderInteractiveQuiz();
                 } else {
-                    document.getElementById('quizContent').innerHTML = '<span class="text-red-500 font-semibold">Unable to generate questions at this time.</span>';
+                    document.getElementById('quizContent').innerHTML = '<span class="text-red-500">Failed to load quiz.</span>';
                 }
             })
             .catch(() => {
-                document.getElementById('quizContent').innerHTML = '<span class="text-red-500 font-semibold">Network error loading quiz questions.</span>';
+                document.getElementById('quizContent').innerHTML = '<span class="text-red-500 font-semibold">Network error loading quiz.</span>';
             });
         }
 
-        function closePracticeModal() {
+        function renderInteractiveQuiz() {
+            let html = '<div class="space-y-4">';
+            currentQuestions.forEach((q, qIndex) => {
+                html += `
+                    <div id="q_box_${qIndex}" class="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700/80 p-4 rounded-xl space-y-3">
+                        <p class="font-bold text-indigo-600 dark:text-indigo-300">${qIndex + 1}. ${q.question}</p>
+                        
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                            ${q.options.map((opt, optIndex) => `
+                                <button 
+                                    id="btn_${qIndex}_${optIndex}" 
+                                    onclick="selectAnswer(${qIndex}, '${opt.replace(/'/g, "\\'")}', ${optIndex})" 
+                                    class="opt-btn-${qIndex} text-left p-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-indigo-50 dark:hover:bg-gray-700 hover:border-indigo-400 transition font-mono text-gray-800 dark:text-gray-200">
+                                    ${opt}
+                                </button>
+                            `).join('')}
+                        </div>
+
+                        <div id="feedback_${qIndex}" class="hidden text-[11px] p-2.5 rounded-lg border"></div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            document.getElementById('quizContent').innerHTML = html;
+        }
+
+        function selectAnswer(qIndex, selectedOpt, optIndex) {
+            const question = currentQuestions[qIndex];
+            const feedbackBox = document.getElementById(`feedback_${qIndex}`);
+            const buttons = document.querySelectorAll(`.opt-btn-${qIndex}`);
+
+            buttons.forEach(btn => {
+                btn.disabled = true;
+                btn.classList.add('cursor-not-allowed', 'opacity-70');
+            });
+
+            const selectedLetter = selectedOpt.trim().charAt(0);
+            const correctLetter = question.correct_answer.trim().charAt(0);
+            const isCorrect = selectedLetter === correctLetter || selectedOpt.trim() === question.correct_answer.trim();
+
+            const clickedBtn = document.getElementById(`btn_${qIndex}_${optIndex}`);
+
+            if (isCorrect) {
+                userScore++;
+                clickedBtn.classList.remove('bg-white', 'dark:bg-gray-800');
+                clickedBtn.classList.add('bg-emerald-500', 'text-white', 'border-emerald-600');
+                
+                feedbackBox.className = "text-[11px] p-2.5 rounded-lg border bg-emerald-50 dark:bg-emerald-950/80 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300";
+                feedbackBox.innerHTML = `✅ <strong>Correct!</strong> ${question.explanation || ''}`;
+            } else {
+                clickedBtn.classList.remove('bg-white', 'dark:bg-gray-800');
+                clickedBtn.classList.add('bg-red-500', 'text-white', 'border-red-600');
+
+                feedbackBox.className = "text-[11px] p-2.5 rounded-lg border bg-red-50 dark:bg-red-950/80 border-red-300 dark:border-red-800 text-red-800 dark:text-red-300";
+                feedbackBox.innerHTML = `❌ <strong>Incorrect.</strong> Correct answer: <strong>${question.correct_answer}</strong><br>${question.explanation || ''}`;
+            }
+
+            feedbackBox.classList.remove('hidden');
+
+            answeredCount++;
+            if (answeredCount === currentQuestions.length) {
+                const scoreBanner = document.getElementById('scoreBanner');
+                document.getElementById('finalScore').innerText = userScore;
+                scoreBanner.classList.remove('hidden');
+            }
+        }
+
+        function closeQuizModal() {
             const modal = document.getElementById('quizModal');
             modal.classList.add('hidden');
             modal.classList.remove('flex');
