@@ -7,282 +7,264 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
 </head>
-<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-100 min-h-screen font-sans p-6 transition-colors duration-300">
+<body class="bg-gray-950 text-gray-100 min-h-screen font-sans p-4 sm:p-8 transition-colors">
 
-    <div class="max-w-7xl mx-auto space-y-6">
-        
-        <!-- Navigation -->
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl gap-4">
-            <div>
-                <h1 class="text-2xl font-bold text-indigo-600 dark:text-indigo-400">🎓 Student Academic Portal</h1>
-                <p class="text-xs text-gray-500 dark:text-gray-400">Welcome back, <span class="text-gray-900 dark:text-white font-semibold">{{ student.username }}</span> ({{ student.email }})</p>
-            </div>
-            
+    <div class="max-w-6xl mx-auto space-y-6">
+
+        <!-- Top Header -->
+        <header class="flex justify-between items-center bg-gray-900/60 p-5 rounded-2xl border border-gray-800 backdrop-blur">
             <div class="flex items-center gap-3">
-                <button onclick="toggleTheme()" class="p-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-700 text-xs font-semibold">
-                    <span id="themeIcon">☀️ Light Mode</span>
-                </button>
-                <a href="/logout" class="bg-red-600/90 hover:bg-red-500 text-white text-xs px-4 py-2.5 rounded-xl transition font-semibold shadow-md">Log Out</a>
+                <div class="w-10 h-10 rounded-xl bg-indigo-600/20 text-indigo-400 font-black flex items-center justify-center text-sm border border-indigo-500/30">
+                    {{ student.username[:2].upper() }}
+                </div>
+                <div>
+                    <h1 class="text-base font-bold text-white">{{ student.username }}</h1>
+                    <p class="text-xs text-gray-400">Student Academic Dashboard</p>
+                </div>
             </div>
-        </div>
+            <a href="/logout" class="text-xs text-gray-400 hover:text-red-400 transition font-medium">Sign Out</a>
+        </header>
 
-        <!-- Aggregate Risk -->
-        <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-6 rounded-2xl shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            <div>
-                <h2 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Overall Aggregate Failure Risk</h2>
-                <div class="text-3xl font-extrabold mt-1 {% if at_risk %}text-red-500 dark:text-red-400{% else %}text-emerald-600 dark:text-emerald-400{% endif %}">
+        <!-- Top Risk Banner -->
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5 flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <div class="p-3 rounded-xl {% if at_risk %}bg-red-500/10 text-red-400 border border-red-500/20{% else %}bg-emerald-500/10 text-emerald-400 border border-emerald-500/20{% endif %} font-black text-xl">
                     {{ risk_percent }}%
-                    {% if at_risk %}
-                        <span class="text-xs font-semibold bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 border border-red-300 dark:border-red-800 px-3 py-1 rounded-full ml-2">⚠️ High Academic Risk</span>
-                    {% else %}
-                        <span class="text-xs font-semibold bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 px-3 py-1 rounded-full ml-2">✅ Good Standing</span>
-                    {% endif %}
+                </div>
+                <div>
+                    <h2 class="text-sm font-bold text-white">Overall Failure Risk Score</h2>
+                    <p class="text-xs text-gray-400">
+                        {% if at_risk %}
+                            ⚠️ High risk detected. Follow your custom action pathways below.
+                        {% else %}
+                            ✅ Academic performance is healthy and on track.
+                        {% endif %}
+                    </p>
                 </div>
             </div>
         </div>
 
-        <!-- Subject Cards & Multi-Video Playlists -->
-        <div class="space-y-6">
-            <h2 class="text-lg font-bold text-gray-800 dark:text-gray-200">Course Breakdown & Faculty Playlists</h2>
-            
-            {% if subject_cards %}
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {% for card in subject_cards %}
-                    <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-xl space-y-5 flex flex-col justify-between">
-                        <div>
-                            <!-- Header -->
-                            <div class="flex justify-between items-start border-b border-gray-200 dark:border-gray-700 pb-3 mb-4">
-                                <h3 class="font-bold text-indigo-600 dark:text-indigo-300 text-lg">{{ card.subject }}</h3>
-                                <span class="text-xs font-bold px-3 py-1 rounded-full {% if card.at_risk %}bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 border border-red-300 dark:border-red-800{% else %}bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800{% endif %}">
-                                    Risk: {{ card.risk_percent }}%
-                                </span>
-                            </div>
-
-                            <!-- Metrics -->
-                            <div class="grid grid-cols-4 gap-2 text-center text-xs mb-5">
-                                <div class="bg-gray-50 dark:bg-gray-900 p-2.5 rounded-xl border border-gray-200 dark:border-gray-700">
-                                    <span class="block text-gray-500 dark:text-gray-400 text-[10px]">Attendance</span>
-                                    <span class="font-bold text-gray-800 dark:text-white text-sm">{{ card.attendance }}%</span>
-                                </div>
-                                <div class="bg-gray-50 dark:bg-gray-900 p-2.5 rounded-xl border border-gray-200 dark:border-gray-700">
-                                    <span class="block text-gray-500 dark:text-gray-400 text-[10px]">Midterm</span>
-                                    <span class="font-bold text-gray-800 dark:text-white text-sm">{{ card.midterm }}%</span>
-                                </div>
-                                <div class="bg-gray-50 dark:bg-gray-900 p-2.5 rounded-xl border border-gray-200 dark:border-gray-700">
-                                    <span class="block text-gray-400 text-[10px]">Assignment</span>
-                                    <span class="font-bold text-gray-800 dark:text-white text-sm">{{ card.assignment }}%</span>
-                                </div>
-                                <div class="bg-gray-50 dark:bg-gray-900 p-2.5 rounded-xl border border-gray-200 dark:border-gray-700">
-                                    <span class="block text-gray-400 text-[10px]">Study Hrs</span>
-                                    <span class="font-bold text-gray-800 dark:text-white text-sm">{{ card.study_hours }}h</span>
-                                </div>
-                            </div>
-
-                            <!-- Multi-Video Playlist -->
-                            <div class="space-y-4 border-t border-gray-200 dark:border-gray-700/80 pt-4">
-                                <div class="flex justify-between items-center">
-                                    <h4 class="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
-                                        📹 Course Video Playlist ({{ card.pathway_topics|length }} Modules)
-                                    </h4>
-                                </div>
-
-                                {% if card.pathway_topics %}
-                                    <div class="space-y-4 max-h-[550px] overflow-y-auto pr-1">
-                                        {% for topic in card.pathway_topics %}
-                                        <div class="bg-gray-50 dark:bg-gray-900/90 border border-gray-200 dark:border-gray-700 p-4 rounded-xl space-y-3">
-                                            <div class="flex justify-between items-start">
-                                                <div>
-                                                    <h5 class="text-xs font-bold text-gray-900 dark:text-white">{{ topic.title }}</h5>
-                                                    <p class="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{{ topic.description }}</p>
-                                                </div>
-                                                <span class="bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold px-2 py-0.5 rounded-md border border-indigo-300 dark:border-indigo-800 shrink-0">
-                                                    Module {{ topic.sequence }}
-                                                </span>
-                                            </div>
-
-                                            <div class="aspect-video w-full rounded-xl overflow-hidden border border-gray-300 dark:border-gray-700 shadow-inner bg-black">
-                                                <video class="w-full h-full object-cover" controls preload="metadata">
-                                                    <source src="{{ topic.youtube_url }}" type="video/mp4">
-                                                    Your browser does not support HTML5 video playback.
-                                                </video>
-                                            </div>
-
-                                            <button onclick="openTopicQuiz('{{ card.subject }}', '{{ topic.title }}')" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs py-2 rounded-lg transition shadow-md flex items-center justify-center gap-2">
-                                                📝 Take Module {{ topic.sequence }} Interactive Test
-                                            </button>
-                                        </div>
-                                        {% endfor %}
-                                    </div>
-                                {% else %}
-                                    <p class="text-xs text-gray-400 italic">No faculty lecture videos uploaded for this subject yet.</p>
-                                {% endif %}
-                            </div>
-
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-            {% else %}
-                <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-8 text-center text-gray-500 dark:text-gray-400 text-sm">
-                    No course records assigned yet.
-                </div>
-            {% endif %}
+        {% if subject_cards %}
+        <!-- Subject Selection Tabs -->
+        <div class="flex border-b border-gray-800 space-x-6 text-xs font-bold overflow-x-auto">
+            {% for card in subject_cards %}
+            <button onclick="showSubject('subj-{{ loop.index }}', this)" 
+                    class="subject-tab pb-3 text-gray-400 border-b-2 border-transparent hover:text-white transition whitespace-nowrap {% if loop.first %}border-indigo-500 text-indigo-400{% endif %}">
+                {{ card.subject }}
+            </button>
+            {% endfor %}
         </div>
+
+        <!-- Subject Panels -->
+        {% for card in subject_cards %}
+        <div id="subj-{{ loop.index }}" class="subject-panel {% if not loop.first %}hidden{% endif %} space-y-6">
+
+            <!-- Stats Bar -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div class="bg-gray-900 border border-gray-800 p-4 rounded-xl">
+                    <span class="text-[10px] text-gray-500 uppercase font-semibold">Attendance</span>
+                    <div class="text-lg font-bold text-white mt-1">{{ card.attendance }}%</div>
+                </div>
+                <div class="bg-gray-900 border border-gray-800 p-4 rounded-xl">
+                    <span class="text-[10px] text-gray-500 uppercase font-semibold">Midterm</span>
+                    <div class="text-lg font-bold text-white mt-1">{{ card.midterm }}%</div>
+                </div>
+                <div class="bg-gray-900 border border-gray-800 p-4 rounded-xl">
+                    <span class="text-[10px] text-gray-500 uppercase font-semibold">Assignment</span>
+                    <div class="text-lg font-bold text-white mt-1">{{ card.assignment }}%</div>
+                </div>
+                <div class="bg-gray-900 border border-gray-800 p-4 rounded-xl">
+                    <span class="text-[10px] text-gray-500 uppercase font-semibold">Subject Risk</span>
+                    <div class="text-lg font-bold mt-1 {% if card.at_risk %}text-red-400{% else %}text-emerald-400{% endif %}">
+                        {{ card.risk_percent }}%
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                <!-- Left: Action Pathway Timeline -->
+                <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5 space-y-4">
+                    <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider">🎯 Recommended Actions</h3>
+                    <div class="space-y-3">
+                        {% for step in card.remediation %}
+                        <div class="flex gap-3 items-start border-l-2 border-indigo-500/40 pl-3 py-1">
+                            <div>
+                                <div class="text-[11px] font-bold text-indigo-400">{{ step.phase }}</div>
+                                <p class="text-xs text-gray-300 mt-0.5 leading-snug">{{ step.recommendation }}</p>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Right: Clean Video Module List -->
+                <div class="lg:col-span-2 bg-gray-900 border border-gray-800 rounded-2xl p-5 space-y-4">
+                    <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider">🎥 Course Modules</h3>
+                    
+                    {% if card.pathway_topics %}
+                    <div class="divide-y divide-gray-800/80">
+                        {% for topic in card.pathway_topics %}
+                        <div class="py-3.5 first:pt-0 last:pb-0 space-y-3">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-3">
+                                    <span class="text-xs font-mono font-bold text-gray-500">0{{ topic.sequence }}</span>
+                                    <div>
+                                        <h4 class="text-xs font-bold text-white">{{ topic.title }}</h4>
+                                        <p class="text-[11px] text-gray-400">{{ topic.description or 'Lecture video' }}</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <button onclick="toggleVideo('vid-{{ topic.id }}')" class="px-3 py-1.5 rounded-lg border border-gray-700 hover:bg-gray-800 text-xs text-gray-300 transition">
+                                        ▶ Watch
+                                    </button>
+                                    <button onclick="openTestModal('{{ topic.title }}', '{{ card.subject }}')" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition">
+                                        Take Quiz
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Expandable Video Player -->
+                            <div id="vid-{{ topic.id }}" class="hidden pt-2">
+                                <div class="aspect-video bg-black rounded-xl overflow-hidden border border-gray-800">
+                                    <video controls class="w-full h-full object-contain">
+                                        <source src="{{ topic.youtube_url }}" type="video/mp4">
+                                    </video>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-xs text-gray-500 py-4 text-center">No video modules available for this subject yet.</p>
+                    {% endif %}
+
+                </div>
+
+            </div>
+
+        </div>
+        {% endfor %}
+        {% endif %}
 
     </div>
 
-    <!-- INTERACTIVE 10-QUESTION QUIZ MODAL -->
+    <!-- QUIZ MODAL -->
     <div id="quizModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
-        <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl max-w-2xl w-full p-6 space-y-4 shadow-2xl max-h-[85vh] overflow-y-auto">
-            <div class="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-3">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+            <div class="p-4 border-b border-gray-800 flex justify-between items-center">
                 <div>
-                    <h3 id="quizTitle" class="font-bold text-indigo-600 dark:text-indigo-400 text-base">📝 Interactive Topic Test (10 Questions)</h3>
-                    <p id="quizSubtitle" class="text-xs text-gray-500 dark:text-gray-400"></p>
+                    <span id="quizSubjectTag" class="text-[10px] uppercase font-bold text-indigo-400">Subject</span>
+                    <h3 id="quizTitle" class="text-sm font-bold text-white">Interactive Test</h3>
                 </div>
-                <button onclick="closeQuizModal()" class="text-gray-400 hover:text-white text-sm font-bold">✕</button>
+                <button onclick="closeQuizModal()" class="text-gray-400 hover:text-white text-lg font-bold">&times;</button>
             </div>
-
-            <!-- Score Summary Banner -->
-            <div id="scoreBanner" class="hidden p-4 bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200 dark:border-indigo-800 rounded-xl text-center space-y-1">
-                <h4 class="text-sm font-bold text-indigo-600 dark:text-indigo-300">🎉 Quiz Completed!</h4>
-                <p class="text-xs text-gray-700 dark:text-gray-300">You scored <span id="finalScore" class="font-bold text-emerald-500">0</span> out of 10</p>
-            </div>
-            
-            <div id="quizContent" class="space-y-4 text-xs text-gray-700 dark:text-gray-300 min-h-[200px]">
-                <div class="text-center py-10 space-y-2">
-                    <div class="animate-spin inline-block w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full"></div>
-                    <p class="text-xs text-gray-400">Loading interactive questions...</p>
-                </div>
+            <div id="quizContainer" class="p-5 overflow-y-auto space-y-4 text-xs flex-1">
+                <div class="text-center py-8 text-gray-400">Loading quiz...</div>
             </div>
         </div>
     </div>
 
     <script>
-        let currentQuestions = [];
-        let userScore = 0;
-        let answeredCount = 0;
-
-        function applyTheme(theme) {
-            const html = document.documentElement;
-            const icon = document.getElementById('themeIcon');
-            if (theme === 'dark') {
-                html.classList.add('dark');
-                if(icon) icon.innerHTML = '🌙 Dark Mode';
-                localStorage.setItem('theme', 'dark');
-            } else {
-                html.classList.remove('dark');
-                if(icon) icon.innerHTML = '☀️ Light Mode';
-                localStorage.setItem('theme', 'light');
-            }
+        function showSubject(panelId, btn) {
+            document.querySelectorAll('.subject-panel').forEach(p => p.classList.add('hidden'));
+            document.querySelectorAll('.subject-tab').forEach(t => {
+                t.classList.remove('border-indigo-500', 'text-indigo-400');
+                t.classList.add('border-transparent', 'text-gray-400');
+            });
+            
+            document.getElementById(panelId).classList.remove('hidden');
+            btn.classList.remove('border-transparent', 'text-gray-400');
+            btn.classList.add('border-indigo-500', 'text-indigo-400');
         }
-        function toggleTheme() {
-            const currentTheme = localStorage.getItem('theme') || 'dark';
-            applyTheme(currentTheme === 'dark' ? 'light' : 'dark');
-        }
-        document.addEventListener('DOMContentLoaded', () => {
-            applyTheme(localStorage.getItem('theme') || 'dark');
-        });
 
-        function openTopicQuiz(subject, topicTitle) {
+        function toggleVideo(id) {
+            document.getElementById(id).classList.toggle('hidden');
+        }
+
+        function openTestModal(topicTitle, subject) {
             const modal = document.getElementById('quizModal');
-            document.getElementById('quizSubtitle').innerText = `${subject} • ${topicTitle}`;
-            document.getElementById('scoreBanner').classList.add('hidden');
-            userScore = 0;
-            answeredCount = 0;
-
+            const quizContainer = document.getElementById('quizContainer');
+            document.getElementById('quizTitle').innerText = topicTitle;
+            document.getElementById('quizSubjectTag').innerText = subject;
+            
+            quizContainer.innerHTML = '<div class="text-center py-8 text-gray-400 animate-pulse">Generating quiz...</div>';
             modal.classList.remove('hidden');
             modal.classList.add('flex');
-            
+
             fetch('/generate_topic_quiz', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ subject: subject, topic_title: topicTitle })
+                body: JSON.stringify({ topic_title: topicTitle, subject: subject })
             })
             .then(res => res.json())
             .then(data => {
-                if (data.questions && data.questions.length > 0) {
-                    currentQuestions = data.questions;
-                    renderInteractiveQuiz();
+                if (data.success && data.questions) {
+                    renderQuizQuestions(data.questions);
                 } else {
-                    document.getElementById('quizContent').innerHTML = '<span class="text-red-500">Failed to load quiz.</span>';
+                    quizContainer.innerHTML = '<div class="text-center py-8 text-red-400">Failed to load quiz.</div>';
                 }
             })
             .catch(() => {
-                document.getElementById('quizContent').innerHTML = '<span class="text-red-500 font-semibold">Network error loading quiz.</span>';
+                quizContainer.innerHTML = '<div class="text-center py-8 text-red-400">Error fetching quiz.</div>';
             });
-        }
-
-        function renderInteractiveQuiz() {
-            let html = '<div class="space-y-4">';
-            currentQuestions.forEach((q, qIndex) => {
-                html += `
-                    <div id="q_box_${qIndex}" class="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700/80 p-4 rounded-xl space-y-3">
-                        <p class="font-bold text-indigo-600 dark:text-indigo-300">${qIndex + 1}. ${q.question}</p>
-                        
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
-                            ${q.options.map((opt, optIndex) => `
-                                <button 
-                                    id="btn_${qIndex}_${optIndex}" 
-                                    onclick="selectAnswer(${qIndex}, '${opt.replace(/'/g, "\\'")}', ${optIndex})" 
-                                    class="opt-btn-${qIndex} text-left p-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-indigo-50 dark:hover:bg-gray-700 hover:border-indigo-400 transition font-mono text-gray-800 dark:text-gray-200">
-                                    ${opt}
-                                </button>
-                            `).join('')}
-                        </div>
-
-                        <div id="feedback_${qIndex}" class="hidden text-[11px] p-2.5 rounded-lg border"></div>
-                    </div>
-                `;
-            });
-            html += '</div>';
-            document.getElementById('quizContent').innerHTML = html;
-        }
-
-        function selectAnswer(qIndex, selectedOpt, optIndex) {
-            const question = currentQuestions[qIndex];
-            const feedbackBox = document.getElementById(`feedback_${qIndex}`);
-            const buttons = document.querySelectorAll(`.opt-btn-${qIndex}`);
-
-            buttons.forEach(btn => {
-                btn.disabled = true;
-                btn.classList.add('cursor-not-allowed', 'opacity-70');
-            });
-
-            const selectedLetter = selectedOpt.trim().charAt(0);
-            const correctLetter = question.correct_answer.trim().charAt(0);
-            const isCorrect = selectedLetter === correctLetter || selectedOpt.trim() === question.correct_answer.trim();
-
-            const clickedBtn = document.getElementById(`btn_${qIndex}_${optIndex}`);
-
-            if (isCorrect) {
-                userScore++;
-                clickedBtn.classList.remove('bg-white', 'dark:bg-gray-800');
-                clickedBtn.classList.add('bg-emerald-500', 'text-white', 'border-emerald-600');
-                
-                feedbackBox.className = "text-[11px] p-2.5 rounded-lg border bg-emerald-50 dark:bg-emerald-950/80 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300";
-                feedbackBox.innerHTML = `✅ <strong>Correct!</strong> ${question.explanation || ''}`;
-            } else {
-                clickedBtn.classList.remove('bg-white', 'dark:bg-gray-800');
-                clickedBtn.classList.add('bg-red-500', 'text-white', 'border-red-600');
-
-                feedbackBox.className = "text-[11px] p-2.5 rounded-lg border bg-red-50 dark:bg-red-950/80 border-red-300 dark:border-red-800 text-red-800 dark:text-red-300";
-                feedbackBox.innerHTML = `❌ <strong>Incorrect.</strong> Correct answer: <strong>${question.correct_answer}</strong><br>${question.explanation || ''}`;
-            }
-
-            feedbackBox.classList.remove('hidden');
-
-            answeredCount++;
-            if (answeredCount === currentQuestions.length) {
-                const scoreBanner = document.getElementById('scoreBanner');
-                document.getElementById('finalScore').innerText = userScore;
-                scoreBanner.classList.remove('hidden');
-            }
         }
 
         function closeQuizModal() {
             const modal = document.getElementById('quizModal');
             modal.classList.add('hidden');
             modal.classList.remove('flex');
+        }
+
+        function renderQuizQuestions(questions) {
+            const quizContainer = document.getElementById('quizContainer');
+            let html = '';
+
+            questions.forEach((q, qIndex) => {
+                html += `
+                    <div class="bg-gray-950 border border-gray-800/80 p-4 rounded-xl space-y-3">
+                        <div class="font-bold text-white text-xs">${q.question}</div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                `;
+
+                q.options.forEach((opt) => {
+                    html += `
+                        <button onclick="checkAnswer(this, '${opt.replace(/'/g, "\\'")}', '${q.correct_answer.replace(/'/g, "\\'")}', 'exp-${qIndex}')" 
+                                class="quiz-opt-btn text-left p-2.5 rounded-lg border border-gray-800 bg-gray-900 hover:bg-gray-800 transition font-medium text-gray-300 text-xs">
+                            ${opt}
+                        </button>
+                    `;
+                });
+
+                html += `
+                        </div>
+                        <div id="exp-${qIndex}" class="hidden p-2.5 rounded-lg text-[11px] font-semibold"></div>
+                    </div>
+                `;
+            });
+
+            quizContainer.innerHTML = html;
+        }
+
+        function checkAnswer(btn, selected, correct, expId) {
+            const parentGroup = btn.closest('.grid');
+            const allBtns = parentGroup.querySelectorAll('.quiz-opt-btn');
+            const expDiv = document.getElementById(expId);
+
+            allBtns.forEach(b => b.disabled = true);
+
+            if (selected === correct) {
+                btn.className = "quiz-opt-btn text-left p-2.5 rounded-lg border border-emerald-500/40 bg-emerald-500/20 text-emerald-300 font-bold text-xs";
+                expDiv.className = "p-2.5 rounded-lg text-[11px] font-semibold bg-emerald-500/10 border border-emerald-500/20 text-emerald-400";
+                expDiv.innerText = "✅ Correct answer!";
+            } else {
+                btn.className = "quiz-opt-btn text-left p-2.5 rounded-lg border border-red-500/40 bg-red-500/20 text-red-300 font-bold text-xs";
+                expDiv.className = "p-2.5 rounded-lg text-[11px] font-semibold bg-red-500/10 border border-red-500/20 text-red-400";
+                expDiv.innerText = `❌ Incorrect. Correct answer: ${correct}`;
+            }
+
+            expDiv.classList.remove('hidden');
         }
     </script>
 </body>

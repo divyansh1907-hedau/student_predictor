@@ -142,7 +142,7 @@ def init_db():
             f_user.set_password('faculty123')
             db.session.add(f_user)
 
-    # Seed Demo Student
+    # Seed Demo Student with VARIED Subject Scores
     student = User.query.filter_by(username='student1').first()
     if not student:
         student = User(username='student1', email='student1@university.edu', role='student')
@@ -150,8 +150,14 @@ def init_db():
         db.session.add(student)
         db.session.flush()
 
-        grade_ds = StudentSubjectGrade(student_id=student.id, subject='Data Structures & Algorithms', attendance=85.0, midterm=78.0, assignment=80.0, logins=15.0, study_hours=6.0)
-        grade_dbms = StudentSubjectGrade(student_id=student.id, subject='Database Management Systems', attendance=48.0, midterm=38.0, assignment=42.0, logins=6.0, study_hours=2.0)
+        grade_ds = StudentSubjectGrade(
+            student_id=student.id, subject='Data Structures & Algorithms',
+            attendance=88.0, midterm=82.0, assignment=85.0, logins=18.0, study_hours=7.5
+        )
+        grade_dbms = StudentSubjectGrade(
+            student_id=student.id, subject='Database Management Systems',
+            attendance=42.0, midterm=32.0, assignment=38.0, logins=5.0, study_hours=2.0
+        )
         db.session.add_all([grade_ds, grade_dbms])
 
     db.session.commit()
@@ -311,7 +317,6 @@ def logout():
 @app.route('/admin_dashboard')
 @login_required
 def admin_dashboard():
-    """Admin Portal route with complete error-handling and variable safety."""
     if current_user.role != 'admin':
         flash('Unauthorized Access', 'error')
         return redirect(url_for('home'))
@@ -366,7 +371,6 @@ def admin_dashboard():
 @app.route('/upload_teacher_video', methods=['POST'])
 @login_required
 def upload_teacher_video():
-    """Allows faculty to upload videos safely with binary file streams and quiz fallback."""
     if current_user.role not in ['faculty', 'admin']:
         return "Unauthorized Access", 403
 
@@ -380,7 +384,6 @@ def upload_teacher_video():
             flash('Please select a valid video file (.mp4, .webm).', 'error')
             return redirect(url_for('home'))
 
-        # Save video file locally
         filename = secure_filename(f"{int(time.time())}_{file.filename}")
         local_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(local_path)
@@ -438,7 +441,7 @@ def upload_teacher_video():
 @app.route('/upload_batch', methods=['POST'])
 @login_required
 def upload_batch():
-    """Processes CSV, links student records in SQLite database, and displays results."""
+    """Processes CSV, updates unique subject-specific grades in SQLite, and displays results."""
     global last_batch_results
     try:
         file = request.files.get('file')
@@ -484,6 +487,7 @@ def upload_batch():
                 db.session.flush()
                 existing_users[student_username] = student_user
 
+            # Subject-Specific Grade Record Isolation
             grade_entry = StudentSubjectGrade.query.filter_by(
                 student_id=student_user.id, subject=faculty_subject
             ).first()
@@ -495,16 +499,16 @@ def upload_batch():
                     attendance=float(row['attendance']),
                     midterm=float(row['midterm']),
                     assignment=float(row['assignment']),
-                    logins=float(row['logins']),
-                    study_hours=float(row['study_hours'])
+                    logins=float(row.get('logins', 10.0)),
+                    study_hours=float(row.get('study_hours', 5.0))
                 )
                 db.session.add(grade_entry)
             else:
                 grade_entry.attendance = float(row['attendance'])
                 grade_entry.midterm = float(row['midterm'])
                 grade_entry.assignment = float(row['assignment'])
-                grade_entry.logins = float(row['logins'])
-                grade_entry.study_hours = float(row['study_hours'])
+                grade_entry.logins = float(row.get('logins', 10.0))
+                grade_entry.study_hours = float(row.get('study_hours', 5.0))
 
             batch_results.append({
                 'id': student_id,
@@ -521,7 +525,7 @@ def upload_batch():
         db.session.commit()
         last_batch_results = batch_results
 
-        flash(f'Processed batch CSV for [{faculty_subject}]. Student grades & accounts linked successfully.', 'success')
+        flash(f'Processed batch CSV for [{faculty_subject}]. Unique subject metrics linked.', 'success')
 
         return render_template(
             'index.html',
@@ -542,7 +546,6 @@ def upload_batch():
 @app.route('/download_report')
 @login_required
 def download_report():
-    """Generates a PDF report of class risk analysis using ReportLab."""
     global last_batch_results
     if not last_batch_results:
         flash("No batch data available to generate report. Please process a CSV first.", "error")
@@ -589,7 +592,6 @@ def download_report():
 @app.route('/send_alerts')
 @login_required
 def send_alerts():
-    """Sends email alerts to students flagged as At Risk."""
     global last_batch_results
     if not last_batch_results:
         flash("No student batch results available to send alerts.", "error")
@@ -679,7 +681,6 @@ def student_dashboard():
 @app.route('/generate_topic_quiz', methods=['POST'])
 @login_required
 def generate_topic_quiz():
-    """Generates fresh randomized questions on demand."""
     try:
         data = request.json or {}
         topic_title = data.get('topic_title', '')
@@ -687,10 +688,8 @@ def generate_topic_quiz():
 
         topic = LearningTopic.query.filter_by(subject=subject, title=topic_title).first()
 
-        # Always generate a fresh randomized quiz
         questions = build_unique_fallback_quiz(topic_title, subject)
 
-        # Update JSON in database
         if topic:
             topic.quiz_data_json = json.dumps(questions)
             db.session.commit()
