@@ -1,6 +1,7 @@
 import io
 import json
 import os
+import random
 import time
 import joblib
 import numpy as np
@@ -25,7 +26,7 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'edupredict-enterprise-s
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///edupredict.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Config video uploads
+# Config video uploads directory
 UPLOAD_FOLDER = os.path.join('static', 'uploads', 'videos')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -48,14 +49,21 @@ app.config['MAIL_DEFAULT_SENDER'] = ('EduPredict AI Advisory', 'edupredict.ai@gm
 
 mail = Mail(app)
 
-GEMINI_KEY = os.environ.get("GEMINI_API_KEY")
+# Gemini API Key with hardcoded fallback string
+GEMINI_KEY = os.environ.get("GEMINI_API_KEY", "AQ.Ab8RN6JhyqAGQbzCelcv8xXUr93zsn6czzQcOlvoIgnQDhQhIA")
 ai_client = genai.Client(api_key=GEMINI_KEY) if GEMINI_KEY else None
 
 model = joblib.load('model.pkl') if os.path.exists('model.pkl') else None
 scaler = joblib.load('scaler.pkl') if os.path.exists('scaler.pkl') else None
 
-# Global store for batch results report generation
 last_batch_results = []
+metrics_summary = {}
+if os.path.exists('metrics.json'):
+    try:
+        with open('metrics.json', 'r') as f:
+            metrics_summary = json.load(f)
+    except Exception:
+        metrics_summary = {}
 
 # ==========================================
 # 2. DATABASE MODELS
@@ -66,7 +74,7 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(200), nullable=False)
-    role = db.Column(db.String(20), nullable=False)
+    role = db.Column(db.String(20), nullable=False)  # 'admin', 'faculty', 'student'
     subject = db.Column(db.String(80), nullable=True, default='General')
     
     grades = db.relationship('StudentSubjectGrade', backref='student_user', lazy=True, cascade="all, delete-orphan")
@@ -79,6 +87,7 @@ class User(UserMixin, db.Model):
 
 
 class StudentSubjectGrade(db.Model):
+    """Stores attendance and marks per student per subject."""
     id = db.Column(db.Integer, primary_key=True)
     student_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     subject = db.Column(db.String(80), nullable=False)
@@ -91,13 +100,14 @@ class StudentSubjectGrade(db.Model):
 
 
 class LearningTopic(db.Model):
+    """Stores sequential learning topics & video paths per subject."""
     id = db.Column(db.Integer, primary_key=True)
     subject = db.Column(db.String(80), nullable=False)
     sequence = db.Column(db.Integer, nullable=False)
     title = db.Column(db.String(150), nullable=False)
     description = db.Column(db.Text, nullable=True)
-    youtube_url = db.Column(db.String(255), nullable=False)
-    quiz_data_json = db.Column(db.Text, nullable=True)
+    youtube_url = db.Column(db.String(255), nullable=False)  # Local video URL
+    quiz_data_json = db.Column(db.Text, nullable=True)     # Stores AI generated quiz JSON
 
 
 @login_manager.user_loader
@@ -106,17 +116,19 @@ def load_user(user_id):
 
 
 # ==========================================
-# 3. HELPER FUNCTIONS & INIT
+# 3. HELPER & INITIALIZATION FUNCTIONS
 # ==========================================
 
 def init_db():
     db.create_all()
 
+    # Seed Admin
     if not User.query.filter_by(username='admin').first():
         admin = User(username='admin', email='admin@university.edu', role='admin', subject='Administration')
         admin.set_password('admin123')
         db.session.add(admin)
 
+    # Seed Faculty Accounts
     subject_faculties = [
         {'username': 'faculty_ds', 'email': 'ds_faculty@university.edu', 'subject': 'Data Structures & Algorithms'},
         {'username': 'faculty_dbms', 'email': 'dbms_faculty@university.edu', 'subject': 'Database Management Systems'},
@@ -130,6 +142,7 @@ def init_db():
             f_user.set_password('faculty123')
             db.session.add(f_user)
 
+    # Seed Demo Student
     student = User.query.filter_by(username='student1').first()
     if not student:
         student = User(username='student1', email='student1@university.edu', role='student')
@@ -147,34 +160,111 @@ with app.app_context():
     init_db()
 
 
+def generate_personalized_path(midterm, assignment, attendance, study_hours):
+    path = []
+    if midterm < 50:
+        if study_hours < 5:
+            path.append({'phase': 'Week 1-2: Concept Rebuilding', 'recommendation': 'Low study time detected. Engage in daily micro-learning modules.'})
+        else:
+            path.append({'phase': 'Week 1-2: Study Strategy Pivot', 'recommendation': 'High effort but low returns. Transition to active recall & practice testing.'})
+
+    if assignment < 50:
+        path.append({'phase': 'Week 2: Applied Practice', 'recommendation': 'Complete guided problem sets with peer-mentoring assistance.'})
+
+    if attendance < 75:
+        path.append({'phase': 'Week 3: Routine Alignment', 'recommendation': 'Schedule mandatory counseling check-ins and set automated lecture alerts.'})
+
+    if not path:
+        path.append({'phase': 'Maintenance', 'recommendation': 'Student performing well. Assign advanced extension tasks.'})
+
+    path.append({'phase': 'Week 4: Mastery Verification', 'recommendation': 'Attempt diagnostic assessment to re-evaluate risk profile.'})
+    return path
+
+
 def build_unique_fallback_quiz(topic_title, subject):
-    topic_questions = [
-        {"q": f"What primary problem is addressed in {topic_title}?", "a": "A) Data Organization & Efficiency", "opts": ["A) Data Organization & Efficiency", "B) UI Redesign", "C) Network Bandwidth", "D) Operating System Kernel"]},
-        {"q": f"Which time complexity is ideal for operations in {topic_title}?", "a": "A) O(1) Constant Time", "opts": ["A) O(1) Constant Time", "B) O(n^2) Quadratic", "C) O(n!) Factorial", "D) O(2^n) Exponential"]},
-        {"q": f"How is memory allocated for topics covered in {topic_title}?", "a": "A) Dynamic Heap / Contiguous Memory", "opts": ["A) Dynamic Heap / Contiguous Memory", "B) Static Read-Only Cache", "C) Virtual ROM Allocation", "D) GPU Framebuffers"]},
-        {"q": f"What is a main trade-off when optimizing {topic_title}?", "a": "A) Time vs. Space Complexity", "opts": ["A) Time vs. Space Complexity", "B) Screen Resolution", "C) Network Latency", "D) Keyboard Input Delay"]},
-        {"q": f"Which fundamental data structure supports operations in {topic_title}?", "a": "A) Arrays & Pointers", "opts": ["A) Arrays & Pointers", "B) CSS Selectors", "C) DOM Nodes", "D) Machine Code Bytes"]},
-        {"q": f"What is the worst-case time complexity of searching in an unindexed structure in {topic_title}?", "a": "A) O(N) Linear Search", "opts": ["A) O(N) Linear Search", "B) O(1)", "C) O(log N)", "D) O(N log N)"]},
-        {"q": f"How are duplicate entries handled logically in {topic_title}?", "a": "A) Explicit Key Checks or Hashing", "opts": ["A) Explicit Key Checks or Hashing", "B) Automatic OS Garbage Collection", "C) Stack Overflow Exceptions", "D) CPU Thread Halting"]},
-        {"q": f"Which traversal or access method is most effective for {topic_title}?", "a": "A) Sequential or Indexed Access", "opts": ["A) Sequential or Indexed Access", "B) Random Bus Interrupts", "C) DMA Channel Allocation", "D) BIOS Boot Protocols"]},
-        {"q": f"What happens during an overflow error in {topic_title}?", "a": "A) Allocated Capacity Exceeded", "opts": ["A) Allocated Capacity Exceeded", "B) Monitor Refresh Rate Drops", "C) User Session Logs Out", "D) Database Connection Closes"]},
-        {"q": f"Why is {topic_title} essential in software development?", "a": "A) Optimizes Resource Utilization & Performance", "opts": ["A) Optimizes Resource Utilization & Performance", "B) Formats HTML Elements", "C) Compresses JPG Images", "D) Manages Wi-Fi Signals"]}
+    """Generates 10 distinct questions with randomized answer placements (A, B, C, D)."""
+    raw_questions = [
+        {
+            "q": f"What is the primary technical objective of {topic_title}?",
+            "correct": "Optimizing execution performance and resource usage",
+            "wrongs": ["Redesigning front-end user interface layouts", "Managing physical network routing hardware", "Handling operating system boot sequence registers"]
+        },
+        {
+            "q": f"Which computational complexity is most desirable in {topic_title}?",
+            "correct": "O(1) Constant Time Complexity",
+            "wrongs": ["O(n^2) Quadratic Growth Rate", "O(n!) Factorial Complexity", "O(2^n) Exponential Complexity"]
+        },
+        {
+            "q": f"How is memory allocation primarily handled for elements in {topic_title}?",
+            "correct": "Dynamic Heap or Contiguous Block Allocation",
+            "wrongs": ["Static Read-Only ROM Caching", "Virtual Memory Swap File Mapping", "GPU Dedicated Framebuffer Allocation"]
+        },
+        {
+            "q": f"What key engineering trade-off is analyzed in {topic_title}?",
+            "correct": "Time Complexity vs. Space Complexity",
+            "wrongs": ["Display Resolution vs. Refresh Rate", "Network Latency vs. Router Bandwidth", "Keyboard Polling vs. Mouse DPI"]
+        },
+        {
+            "q": f"Which fundamental data representation supports operations in {topic_title}?",
+            "correct": "Pointers and Sequential Data Elements",
+            "wrongs": ["CSS Style Classes and Rulesets", "HTML DOM Tree Nodes", "Binary Machine Code Instructions"]
+        },
+        {
+            "q": f"What is the worst-case runtime for an unindexed search in {topic_title}?",
+            "correct": "O(N) Linear Time",
+            "wrongs": ["O(1) Instant Lookup", "O(log N) Logarithmic Time", "O(N log N) Linearithmic Time"]
+        },
+        {
+            "q": f"How are boundary conditions or overflow handled in {topic_title}?",
+            "correct": "Explicit Capacity Validation Checks",
+            "wrongs": ["Automatic Operating System Garbage Collection", "Unconditional Program Termination", "Direct CPU Clock Frequency Throttling"]
+        },
+        {
+            "q": f"Which access method provides optimal throughput for {topic_title}?",
+            "correct": "Direct Index-Based or Sequential Access",
+            "wrongs": ["Randomized Bus Interrupt Handling", "DMA Channel Memory Arbitration", "BIOS System Initialization Callbacks"]
+        },
+        {
+            "q": f"When implementing {topic_title}, what causes an overflow error?",
+            "correct": "Exceeding pre-allocated memory boundaries",
+            "wrongs": ["Exceeding monitor frame rate limits", "User web session token expiration", "Remote database socket disconnection"]
+        },
+        {
+            "q": f"Why is {topic_title} critical in professional development?",
+            "correct": "Ensures scalable software architectures and fast execution",
+            "wrongs": ["Styles visual user interface components", "Compresses high-resolution image formats", "Encapsulates wireless network packet protocols"]
+        }
     ]
-    
+
+    letters = ["A", "B", "C", "D"]
     formatted_quiz = []
-    for i, item in enumerate(topic_questions):
+
+    for i, item in enumerate(raw_questions):
+        all_choices = [item["correct"]] + item["wrongs"]
+        random.shuffle(all_choices)
+
+        labeled_options = []
+        correct_labeled = ""
+
+        for idx, choice in enumerate(all_choices):
+            label_str = f"{letters[idx]}) {choice}"
+            labeled_options.append(label_str)
+            if choice == item["correct"]:
+                correct_labeled = label_str
+
         formatted_quiz.append({
             "id": i + 1,
-            "question": f"Q{i+1}: {item['q']}",
-            "options": item['opts'],
-            "correct_answer": item['a'],
-            "explanation": f"Core technical principle in {subject} - {topic_title}."
+            "question": item["q"],
+            "options": labeled_options,
+            "correct_answer": correct_labeled,
+            "explanation": f"Core conceptual knowledge for [{subject}] module '{topic_title}'."
         })
+
     return formatted_quiz
 
 
 # ==========================================
-# 4. PORTAL & REPORT ROUTES
+# 4. PORTAL ROUTES & ADMIN DASHBOARD
 # ==========================================
 
 @app.route('/')
@@ -218,9 +308,137 @@ def logout():
     return redirect(url_for('login'))
 
 
+@app.route('/admin_dashboard')
+@login_required
+def admin_dashboard():
+    """Admin Portal route with complete error-handling and variable safety."""
+    if current_user.role != 'admin':
+        flash('Unauthorized Access', 'error')
+        return redirect(url_for('home'))
+
+    try:
+        total_users = User.query.count()
+        students = User.query.filter_by(role='student').all()
+        faculty = User.query.filter_by(role='faculty').all()
+
+        total_students_count = len(students)
+        total_faculty_count = len(faculty)
+
+        all_grades = StudentSubjectGrade.query.all()
+        at_risk_count = 0
+        if model and scaler and all_grades:
+            for g in all_grades:
+                raw_features = np.array([[g.attendance, g.midterm, g.assignment, g.logins, g.study_hours]])
+                scaled = scaler.transform(raw_features)
+                pred = model.predict(scaled)[0]
+                prob = model.predict_proba(scaled)[0][1] if hasattr(model, 'predict_proba') else float(pred)
+                if pred == 1 or prob >= 0.5:
+                    at_risk_count += 1
+
+        return render_template(
+            'admin.html',
+            user=current_user,
+            total_users=total_users,
+            students=students,
+            faculty=faculty,
+            total_students=total_students_count,
+            total_faculty=total_faculty_count,
+            at_risk_count=at_risk_count,
+            metrics_summary=metrics_summary or {},
+            batch_results=last_batch_results or []
+        )
+    except Exception as e:
+        print(f"Admin Dashboard Exception: {e}")
+        return render_template(
+            'admin.html',
+            user=current_user,
+            total_users=0,
+            students=[],
+            faculty=[],
+            total_students=0,
+            total_faculty=0,
+            at_risk_count=0,
+            metrics_summary={},
+            batch_results=[]
+        )
+
+
+@app.route('/upload_teacher_video', methods=['POST'])
+@login_required
+def upload_teacher_video():
+    """Allows faculty to upload videos safely with binary file streams and quiz fallback."""
+    if current_user.role not in ['faculty', 'admin']:
+        return "Unauthorized Access", 403
+
+    try:
+        file = request.files.get('video_file')
+        subject = request.form.get('subject', getattr(current_user, 'subject', 'General'))
+        title = request.form.get('topic_title', 'Faculty Lecture')
+        description = request.form.get('description', 'Teacher uploaded video.')
+
+        if not file or file.filename == '':
+            flash('Please select a valid video file (.mp4, .webm).', 'error')
+            return redirect(url_for('home'))
+
+        # Save video file locally
+        filename = secure_filename(f"{int(time.time())}_{file.filename}")
+        local_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(local_path)
+        video_url = f"/static/uploads/videos/{filename}"
+
+        questions = []
+        if ai_client:
+            try:
+                with open(local_path, 'rb') as video_bytes:
+                    gemini_file = ai_client.files.upload(file=video_bytes, mime_type='video/mp4')
+
+                retries = 0
+                while (not gemini_file.state or gemini_file.state.name != "ACTIVE") and retries < 5:
+                    time.sleep(2)
+                    gemini_file = ai_client.files.get(name=gemini_file.name)
+                    retries += 1
+
+                if gemini_file.state and gemini_file.state.name == "ACTIVE":
+                    prompt = f"Scan lecture video '{title}' for '{subject}'. Generate 10 distinct multiple choice questions. Return raw JSON array of objects with id, question, options, correct_answer, explanation."
+                    response = ai_client.models.generate_content(
+                        model='gemini-2.5-flash',
+                        contents=[gemini_file, prompt]
+                    )
+
+                    if response and response.text:
+                        clean_text = response.text.replace("```json", "").replace("```", "").strip()
+                        questions = json.loads(clean_text)
+            except Exception as ai_err:
+                print(f"Gemini API Upload Warning (Using Fallback): {ai_err}")
+
+        if not questions or len(questions) < 10:
+            questions = build_unique_fallback_quiz(title, subject)
+
+        seq_count = LearningTopic.query.filter_by(subject=subject).count() + 1
+        new_topic = LearningTopic(
+            subject=subject,
+            sequence=seq_count,
+            title=f"Module {seq_count}: {title}",
+            description=description,
+            youtube_url=video_url,
+            quiz_data_json=json.dumps(questions)
+        )
+        db.session.add(new_topic)
+        db.session.commit()
+
+        flash(f'Successfully added Module {seq_count} video to [{subject}] playlist!', 'success')
+        return redirect(url_for('home'))
+
+    except Exception as e:
+        print(f"Video Upload Error: {e}")
+        flash(f'Error uploading video: {str(e)}', 'error')
+        return redirect(url_for('home'))
+
+
 @app.route('/upload_batch', methods=['POST'])
 @login_required
 def upload_batch():
+    """Processes CSV, links student records in SQLite database, and displays results."""
     global last_batch_results
     try:
         file = request.files.get('file')
@@ -303,7 +521,7 @@ def upload_batch():
         db.session.commit()
         last_batch_results = batch_results
 
-        flash(f'Processed batch CSV for [{faculty_subject}]. Accounts and grades saved.', 'success')
+        flash(f'Processed batch CSV for [{faculty_subject}]. Student grades & accounts linked successfully.', 'success')
 
         return render_template(
             'index.html',
@@ -318,7 +536,7 @@ def upload_batch():
 
 
 # ==========================================
-# 5. DOWNLOAD PDF & SEND ALERTS FEATURES
+# 5. DOWNLOAD PDF REPORT & SEND ALERTS
 # ==========================================
 
 @app.route('/download_report')
@@ -335,7 +553,6 @@ def download_report():
     styles = getSampleStyleSheet()
     
     story = []
-    
     title_style = ParagraphStyle(
         'DocTitle', parent=styles['Heading1'], fontSize=18, textColor=colors.HexColor('#4F46E5'), spaceAfter=12
     )
@@ -392,7 +609,7 @@ This is an automated academic advisory alert from EduPredict AI.
 
 Your current aggregate failure risk for [{student['subject']}] is {student['risk_percent']}%.
 
-Please log in to your Student Portal (http://127.0.0.1:5000/student_dashboard) to review your lecture video modules, take your 10-question practice quizzes, and connect with faculty assistance.
+Please log in to your Student Portal to review your lecture video modules, take your 10-question practice quizzes, and connect with faculty assistance.
 
 Best regards,
 EduPredict AI Advisory Team
@@ -405,70 +622,6 @@ EduPredict AI Advisory Team
 
     flash(f"Dispatched email alerts to {sent_count} flagged student(s)!", "success")
     return redirect(url_for('home'))
-
-
-@app.route('/upload_teacher_video', methods=['POST'])
-@login_required
-def upload_teacher_video():
-    if current_user.role not in ['faculty', 'admin']:
-        return "Unauthorized Access", 403
-
-    try:
-        file = request.files.get('video_file')
-        subject = request.form.get('subject', getattr(current_user, 'subject', 'General'))
-        title = request.form.get('topic_title', 'Faculty Lecture')
-        description = request.form.get('description', 'Teacher uploaded video.')
-
-        if not file or file.filename == '':
-            flash('Please select a valid video file (.mp4, .webm).', 'error')
-            return redirect(url_for('home'))
-
-        filename = secure_filename(f"{int(time.time())}_{file.filename}")
-        local_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(local_path)
-        video_url = f"/static/uploads/videos/{filename}"
-
-        questions = []
-        if ai_client:
-            try:
-                gemini_file = ai_client.files.upload(file=local_path)
-                while not gemini_file.state or gemini_file.state.name != "ACTIVE":
-                    time.sleep(3)
-                    gemini_file = ai_client.files.get(name=gemini_file.name)
-
-                prompt = f"Scan lecture video '{title}' for '{subject}'. Generate 10 distinct multiple choice questions. Return raw JSON array of objects with id, question, options, correct_answer, explanation."
-                response = ai_client.models.generate_content(
-                    model='gemini-2.5-flash',
-                    contents=[gemini_file, prompt]
-                )
-
-                if response and response.text:
-                    clean_text = response.text.replace("```json", "").replace("```", "").strip()
-                    questions = json.loads(clean_text)
-            except Exception as e:
-                print(f"Gemini API Error: {e}")
-
-        if not questions or len(questions) < 10:
-            questions = build_unique_fallback_quiz(title, subject)
-
-        seq_count = LearningTopic.query.filter_by(subject=subject).count() + 1
-        new_topic = LearningTopic(
-            subject=subject,
-            sequence=seq_count,
-            title=f"Module {seq_count}: {title}",
-            description=description,
-            youtube_url=video_url,
-            quiz_data_json=json.dumps(questions)
-        )
-        db.session.add(new_topic)
-        db.session.commit()
-
-        flash(f'Successfully added Module {seq_count} video to [{subject}] playlist! 10 distinct questions generated.', 'success')
-        return redirect(url_for('home'))
-
-    except Exception as e:
-        flash(f'Error uploading video: {str(e)}', 'error')
-        return redirect(url_for('home'))
 
 
 @app.route('/student_dashboard')
@@ -491,6 +644,7 @@ def student_dashboard():
             risk_val = round(prob * 100, 2)
             at_risk = bool(prediction == 1 or risk_val >= 50)
 
+        remediation = generate_personalized_path(g.midterm, g.assignment, g.attendance, g.study_hours)
         total_risk += risk_val
 
         topics = LearningTopic.query.filter_by(subject=g.subject).order_by(LearningTopic.sequence.asc()).all()
@@ -512,6 +666,7 @@ def student_dashboard():
             'study_hours': g.study_hours,
             'risk_percent': risk_val,
             'at_risk': at_risk,
+            'remediation': remediation,
             'pathway_topics': pathway_topics
         })
 
@@ -524,17 +679,22 @@ def student_dashboard():
 @app.route('/generate_topic_quiz', methods=['POST'])
 @login_required
 def generate_topic_quiz():
+    """Generates fresh randomized questions on demand."""
     try:
         data = request.json or {}
         topic_title = data.get('topic_title', '')
         subject = data.get('subject', '')
 
         topic = LearningTopic.query.filter_by(subject=subject, title=topic_title).first()
-        if topic and topic.quiz_data_json:
-            questions = json.loads(topic.quiz_data_json)
-            return jsonify({'success': True, 'questions': questions})
 
+        # Always generate a fresh randomized quiz
         questions = build_unique_fallback_quiz(topic_title, subject)
+
+        # Update JSON in database
+        if topic:
+            topic.quiz_data_json = json.dumps(questions)
+            db.session.commit()
+
         return jsonify({'success': True, 'questions': questions})
 
     except Exception as e:

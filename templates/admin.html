@@ -1,69 +1,59 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EduPredict AI - HOD Executive Portal</title>
+    <title>Admin Dashboard - EduPredict AI</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config = { darkMode: 'class' }</script>
 </head>
-<body class="bg-gray-900 text-gray-100 min-h-screen font-sans flex flex-col justify-between">
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-100 min-h-screen font-sans p-6">
 
-    <!-- Navbar -->
-    <header class="bg-gray-800 border-b border-gray-700 p-4 shadow-md">
-        <div class="max-w-6xl mx-auto flex justify-between items-center">
-            <h1 class="text-2xl font-bold text-indigo-400">🏛️ HOD Executive Portal</h1>
-            <div class="flex items-center space-x-4">
-                <span class="text-xs bg-purple-950 text-purple-300 px-3 py-1 rounded-full border border-purple-700 font-semibold">
-                    Role: Head of Department
-                </span>
-                <a href="/logout" class="text-xs bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded-lg border border-gray-600 transition">
-                    Logout
-                </a>
+    <div class="max-w-7xl mx-auto space-y-6">
+
+        <!-- Top Header -->
+        <div class="flex justify-between items-center bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl">
+            <div>
+                <h1 class="text-2xl font-bold text-indigo-600 dark:text-indigo-400">🛡️ Administration Portal</h1>
+                <p class="text-xs text-gray-500 dark:text-gray-400">System Administrator Control Center</p>
             </div>
+            <a href="/logout" class="bg-red-600 hover:bg-red-500 text-white text-xs px-4 py-2.5 rounded-xl font-semibold shadow-md">Log Out</a>
         </div>
-    </header>
 
-    <!-- Main Content -->
-    <main class="max-w-6xl mx-auto p-6 w-full space-y-8">
-        
-        <!-- Metrics Summary -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-xl">
-                <p class="text-xs text-gray-400 uppercase font-semibold">Total System Users</p>
-                <p class="text-3xl font-bold text-white mt-1">{{ total_users }}</p>
+        <!-- System Stats Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl">
+                <span class="text-xs text-gray-500 dark:text-gray-400 font-semibold uppercase">Total Users</span>
+                <div class="text-3xl font-extrabold text-indigo-600 dark:text-indigo-400 mt-2">{{ total_users or 0 }}</div>
             </div>
-            <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-xl">
-                <p class="text-xs text-gray-400 uppercase font-semibold">Assigned Faculty Members</p>
-                <p class="text-3xl font-bold text-indigo-400 mt-1">{{ faculty|length }}</p>
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl">
+                <span class="text-xs text-gray-500 dark:text-gray-400 font-semibold uppercase">Enrolled Students</span>
+                <div class="text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-2">{{ total_students or 0 }}</div>
             </div>
-            <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-xl">
-                <p class="text-xs text-gray-400 uppercase font-semibold">Enrolled Students</p>
-                <p class="text-3xl font-bold text-emerald-400 mt-1">{{ students|length }}</p>
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl">
+                <span class="text-xs text-gray-500 dark:text-gray-400 font-semibold uppercase">Assigned Faculty</span>
+                <div class="text-3xl font-extrabold text-purple-600 dark:text-purple-400 mt-2">{{ total_faculty or 0 }}</div>
             </div>
         </div>
 
-        <!-- Faculty Management Table -->
-        <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-xl space-y-4">
-            <h2 class="text-xl font-bold text-gray-200">👨‍🏫 Departmental Advisory Staff</h2>
-            <div class="overflow-x-auto rounded-lg border border-gray-700">
-                <table class="w-full text-left text-xs text-gray-300">
-                    <thead class="text-gray-400 uppercase bg-gray-900 border-b border-gray-700">
+        <!-- Faculty List -->
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl space-y-4">
+            <h2 class="text-base font-bold text-gray-900 dark:text-gray-100">Faculty Members</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs text-gray-700 dark:text-gray-300">
+                    <thead class="bg-gray-100 dark:bg-gray-900 text-gray-500 uppercase text-[10px]">
                         <tr>
-                            <th class="py-3 px-4">User ID</th>
-                            <th class="py-3 px-4">Faculty Name</th>
-                            <th class="py-3 px-4">Official Email</th>
-                            <th class="py-3 px-4">Role Access</th>
+                            <th class="p-3">Username</th>
+                            <th class="p-3">Email</th>
+                            <th class="p-3">Assigned Subject</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-gray-800">
-                        {% for f in faculty %}
-                        <tr class="hover:bg-gray-800/60">
-                            <td class="py-3 px-4 font-mono text-gray-400">FAC-00{{ f.id }}</td>
-                            <td class="py-3 px-4 font-semibold text-white">{{ f.username }}</td>
-                            <td class="py-3 px-4">{{ f.email }}</td>
-                            <td class="py-3 px-4">
-                                <span class="bg-indigo-950 text-indigo-300 px-2.5 py-0.5 rounded border border-indigo-800 font-semibold">Faculty / Advisor</span>
-                            </td>
+                    <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                        {% for f in faculty or [] %}
+                        <tr>
+                            <td class="p-3 font-semibold text-indigo-600 dark:text-indigo-400">{{ f.username }}</td>
+                            <td class="p-3">{{ f.email }}</td>
+                            <td class="p-3 font-bold">{{ f.subject or 'General' }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -71,40 +61,6 @@
             </div>
         </div>
 
-        <!-- Student Roster Table -->
-        <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-xl space-y-4">
-            <h2 class="text-xl font-bold text-gray-200">🎓 Student Academic Roster</h2>
-            <div class="overflow-x-auto rounded-lg border border-gray-700">
-                <table class="w-full text-left text-xs text-gray-300">
-                    <thead class="text-gray-400 uppercase bg-gray-900 border-b border-gray-700">
-                        <tr>
-                            <th class="py-3 px-4">Student ID</th>
-                            <th class="py-3 px-4">Username</th>
-                            <th class="py-3 px-4">Email</th>
-                            <th class="py-3 px-4">Attendance %</th>
-                            <th class="py-3 px-4">Midterm %</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-800">
-                        {% for s in students %}
-                        <tr class="hover:bg-gray-800/60">
-                            <td class="py-3 px-4 font-mono text-gray-400">STU-2026-{{ s.id }}</td>
-                            <td class="py-3 px-4 font-semibold text-white">{{ s.username }}</td>
-                            <td class="py-3 px-4">{{ s.email }}</td>
-                            <td class="py-3 px-4">{{ s.attendance }}%</td>
-                            <td class="py-3 px-4">{{ s.midterm }}%</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-    </main>
-
-    <footer class="text-center py-4 text-xs text-gray-500 border-t border-gray-800">
-        EduPredict AI • Departmental Management Portal
-    </footer>
-
+    </div>
 </body>
 </html>
